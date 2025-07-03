@@ -194,3 +194,5 @@ cython_debug/
 .cursorindexingignore
 
 .NLbyHS/
+pass/
+bert-base-uncased/
