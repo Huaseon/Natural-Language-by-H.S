@@ -196,3 +196,4 @@ cython_debug/
 .NLbyHS/
 pass/
 bert-base-uncased/
+.pt
