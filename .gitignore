@@ -194,7 +194,7 @@ cython_debug/
 .cursorindexingignore
 
 .NLbyHS/
-pass/
+.ignore/
 bert-base-uncased/
 *.pth
 *.svg
