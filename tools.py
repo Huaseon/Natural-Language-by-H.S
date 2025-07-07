@@ -28,7 +28,7 @@ def abstract_text(text, target):
 
 from openai import OpenAI
 
-API_KEY = 'sk-7e6e1a9c2ba84b18a09372aff22ff837'
+API_KEY = 'sk-7e6e1a9c2ba84b18a09372aff22ff837' # 已失效
 API_MODEL = 'deepseek-chat'
 API_URL = 'https://api.deepseek.com/v1'
 
@@ -53,3 +53,11 @@ def ask_deepseek(ask):
         messages=messages,
         stream=False
     ).choices[0].message.content
+
+def get_pos_weights(df, targets):
+    f = lambda x: x[0] / x[1]
+    weights = {
+        key: f(df[key].value_counts()[[0, 1]].to_numpy())
+        for key in targets
+    }
+    return weights
