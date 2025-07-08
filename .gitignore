@@ -199,3 +199,5 @@ cython_debug/
 # *.svg
 *.pth
 bert-base-uncased/
+
+!text_assessor_B(350).pth
