@@ -158,8 +158,7 @@ Linear(768 → 192) → ReLU → Dropout(0.7) → Linear(192 → 3)
 3. **任务过滤**：
 
 ``` math
-p_{PF} = \sigma(W_{PF} \mathbf{s} + b_{PF}) \\
-p_{LRA} = \sigma(W_{LRA} \mathbf{s} + b_{LRA})
+p_{PF(LRA)} = \sigma(W_{PF(LRA)} \mathbf{s} + b_{PF(LRA)}) \\
 ```
 
 4. **加权聚合**：
