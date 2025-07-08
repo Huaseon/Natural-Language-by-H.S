@@ -196,3 +196,6 @@ cython_debug/
 .NLbyHS/
 .ignore/
 *.bak
+*.svg
+*.pth
+bert-base-uncased/
