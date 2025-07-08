@@ -256,7 +256,7 @@ L_{total} = L_{PF\_score} + L_{PF\_US} + L_{PF\_neg} + L_{Threat\_up} + L_{Threa
 **准确率计算**：
 
 ``` math
-\text{Accuracy} = \frac{\sum_{i=1}^{6} \sum_{j=1}^{N} \mathbb{1}[\sigma(\hat{y}_{ij}) > 0.5] = y_{ij}]}{6N}
+\text{Accuracy} = \frac{\sum_{i=1}^{6} \sum_{j=1}^{N} \mathbb{1}[[\sigma(\hat{y}_{ij}) > 0.5] = y_{ij}]}{6N}
 ```
 
 其中：
