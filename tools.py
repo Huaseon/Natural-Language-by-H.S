@@ -2,7 +2,7 @@ import re
 import ast
 
 def is_legal_text(text):
-    if re.search(r'[^\x00-\x7F]',  text):
+    if re.search(r'[^\x00-\x7F]', text):
         return False
     try:
         ast.literal_eval(text)
