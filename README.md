@@ -44,6 +44,7 @@ TextAssessor是一个基于BERT预训练模型的双任务文本评估系统，�
 BERT (Bidirectional Encoder Representations from Transformers) 是一个基于Transformer的双向编码器模型。其核心特点是：
 
 **Self-Attention机制：**
+
 $$
 \text{Attention}(Q,K,V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
 $$
@@ -55,11 +56,13 @@ $$
 - $d_k$：键向量的维度
 
 **多头注意力：**
+
 $$
 \text{MultiHead}(Q,K,V) = \text{Concat}(\text{head}_1, ..., \text{head}_h)W^O
 $$
 
 其中：
+
 $$
 \text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)
 $$
@@ -79,6 +82,7 @@ $$
 本模型引入可学习的过滤器，对句子级表示进行加权平均：
 
 **句子嵌入计算：**
+
 $$
 \mathbf{s}_i = \frac{\sum_{j=1}^{T} m_{ij} \mathbf{h}_{ij}}{\sum_{j=1}^{T} m_{ij} + \epsilon}
 $$
@@ -89,11 +93,13 @@ $$
 - $\epsilon$：防止除零的小常数
 
 **任务特定过滤：**
+
 $$
 p_{task}(\mathbf{s}_i) = \sigma(f_{filter}(\mathbf{s}_i))
 $$
 
 **加权聚合：**
+
 $$
 \mathbf{c}_{task} = \frac{\sum_{i=1}^{N} p_{task}(\mathbf{s}_i) \mathbf{s}_i}{\sum_{i=1}^{N} p_{task}(\mathbf{s}_i) + \epsilon}
 $$
@@ -173,6 +179,7 @@ $$
 - $n_{neg}$：负样本数量
 
 **总损失函数**：
+
 $$
 L_{total} = L_{PF\_score} + L_{PF\_US} + L_{PF\_neg} + L_{Threat\_up} + L_{Threat\_down} + L_{Citizen\_impact}
 $$
@@ -193,6 +200,7 @@ $$
 ### 4.3 评估指标
 
 **准确率计算**：
+
 $$
 \text{Accuracy} = \frac{\sum_{i=1}^{6} \sum_{j=1}^{N} \mathbb{1}[\sigma(\hat{y}_{ij}) > 0.5] = y_{ij}]}{6N}
 $$
@@ -766,11 +774,13 @@ plt.savefig('./data/loss-plot.svg')
 
 #### 8.1.1 二分类准确率
 对每个任务维度计算：
+
 $$
 \text{Accuracy}_i = \frac{\text{TP}_i + \text{TN}_i}{\text{TP}_i + \text{TN}_i + \text{FP}_i + \text{FN}_i}
 $$
 
 #### 8.1.2 整体准确率
+
 $$
 \text{Overall Accuracy} = \frac{1}{6} \sum_{i=1}^{6} \text{Accuracy}_i
 $$
