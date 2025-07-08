@@ -69,13 +69,13 @@ BERT (Bidirectional Encoder Representations from Transformers) 是一个基于Tr
 
 ### 2.2 双任务学习理论
 
-双任务学习通过共享底层表示学习，利用任务间的相关性提高整体性能。设两个任务的损失函数分别为$L_1$和$L_2$，总损失为：
+双任务学习通过共享底层表示学习，利用任务间的相关性提高整体性能。设两个任务的损失函数分别为 $L_1$ 和 $L_2$ ，总损失为：
 
 ``` math
 L_{total} = \alpha L_1 + \beta L_2
 ```
 
-其中$\alpha$和$\beta$是任务权重参数。
+其中 $\alpha$ 和 $\beta$ 是任务权重参数。
 
 ### 2.3 注意力过滤机制
 
@@ -88,9 +88,9 @@ L_{total} = \alpha L_1 + \beta L_2
 ```
 
 其中：
-- $\mathbf{h}_{ij}$：第$i$个句子第$j$个token的隐状态
-- $m_{ij}$：注意力掩码
-- $\epsilon$：防止除零的小常数
+- $\mathbf{h}_{ij}$ ：第 $i$ 个句子第 $j$ 个token的隐状态
+- $m_{ij}$ ：注意力掩码
+- $\epsilon$ ：防止除零的小常数
 
 **任务特定过滤：**
 
@@ -141,7 +141,7 @@ Linear(768 → 192) → ReLU → Dropout(0.7) → Linear(192 → 3)
 
 ### 3.3 数学表示
 
-设输入文本序列为$X = \{x_1, x_2, ..., x_T\}$，模型的前向传播过程为：
+设输入文本序列为 $X = \{x_1, x_2, ..., x_T\}$ ，模型的前向传播过程为：
 
 1. **BERT编码**：
 
@@ -186,9 +186,9 @@ L_{BCE}(y, \hat{y}) = -\sum_{i=1}^{N} w_i [y_i \log(\sigma(\hat{y}_i)) + (1-y_i)
 ```
 
 其中：
-- $w_i = \sqrt{\frac{n_{neg}}{n_{pos}}}$：正样本权重
-- $n_{pos}$：正样本数量
-- $n_{neg}$：负样本数量
+- $w_i = \sqrt{\frac{n_{neg}}{n_{pos}}}$ ：正样本权重
+- $n_{pos}$ ：正样本数量
+- $n_{neg}$ ：负样本数量
 
 **总损失函数**：
 
@@ -205,9 +205,9 @@ L_{total} = L_{PF\_score} + L_{PF\_US} + L_{PF\_neg} + L_{Threat\_up} + L_{Threa
 ```
 
 其中：
-- $\eta_t$：学习率
-- $m_t$、$v_t$：动量估计
-- $\lambda$：权重衰减系数
+- $\eta_t$ ：学习率
+- $m_t$ 、$v_t$ ：动量估计
+- $\lambda$ ：权重衰减系数
 
 ### 4.3 评估指标
 
@@ -218,9 +218,9 @@ L_{total} = L_{PF\_score} + L_{PF\_US} + L_{PF\_neg} + L_{Threat\_up} + L_{Threa
 ```
 
 其中：
-- $N$：样本数量
-- $6$：预测维度数量
-- $\mathbb{1}[\cdot]$：指示函数
+- $N$ ：样本数量
+- $6$ ：预测维度数量
+- $\mathbb{1}[\cdot]$ ：指示函数
 
 ---
 
