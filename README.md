@@ -45,9 +45,9 @@ BERT (Bidirectional Encoder Representations from Transformers) 是一个基于Tr
 
 **Self-Attention机制：**
 
-$$
+``` math
 \text{Attention}(Q,K,V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
-$$
+```
 
 其中：
 - $Q$：查询矩阵 (Query)
@@ -57,23 +57,23 @@ $$
 
 **多头注意力：**
 
-$$
+``` math
 \text{MultiHead}(Q,K,V) = \text{Concat}(\text{head}_1, ..., \text{head}_h)W^O
-$$
+```
 
 其中：
 
-$$
+``` math
 \text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)
-$$
+```
 
 ### 2.2 双任务学习理论
 
 双任务学习通过共享底层表示学习，利用任务间的相关性提高整体性能。设两个任务的损失函数分别为$L_1$和$L_2$，总损失为：
 
-$$
+``` math
 L_{total} = \alpha L_1 + \beta L_2
-$$
+```
 
 其中$\alpha$和$\beta$是任务权重参数。
 
@@ -83,9 +83,9 @@ $$
 
 **句子嵌入计算：**
 
-$$
+``` math
 \mathbf{s}_i = \frac{\sum_{j=1}^{T} m_{ij} \mathbf{h}_{ij}}{\sum_{j=1}^{T} m_{ij} + \epsilon}
-$$
+```
 
 其中：
 - $\mathbf{h}_{ij}$：第$i$个句子第$j$个token的隐状态
@@ -94,15 +94,15 @@ $$
 
 **任务特定过滤：**
 
-$$
+``` math
 p_{task}(\mathbf{s}_i) = \sigma(f_{filter}(\mathbf{s}_i))
-$$
+```
 
 **加权聚合：**
 
-$$
+``` math
 \mathbf{c}_{task} = \frac{\sum_{i=1}^{N} p_{task}(\mathbf{s}_i) \mathbf{s}_i}{\sum_{i=1}^{N} p_{task}(\mathbf{s}_i) + \epsilon}
-$$
+```
 
 ---
 
@@ -144,22 +144,34 @@ Linear(768 → 192) → ReLU → Dropout(0.7) → Linear(192 → 3)
 设输入文本序列为$X = \{x_1, x_2, ..., x_T\}$，模型的前向传播过程为：
 
 1. **BERT编码**：
-   $$\mathbf{H} = \text{BERT}(X)$$
+
+``` math
+\mathbf{H} = \text{BERT}(X)
+```
 
 2. **句子嵌入**：
-   $$\mathbf{s} = \frac{\sum_{t=1}^{T} m_t \mathbf{h}_t}{\sum_{t=1}^{T} m_t + \epsilon}$$
+
+``` math
+\mathbf{s} = \frac{\sum_{t=1}^{T} m_t \mathbf{h}_t}{\sum_{t=1}^{T} m_t + \epsilon}
+```
 
 3. **任务过滤**：
-   $$p_{PF} = \sigma(W_{PF} \mathbf{s} + b_{PF})$$
-   $$p_{LRA} = \sigma(W_{LRA} \mathbf{s} + b_{LRA})$$
+
+``` math
+p_{PF} = \sigma(W_{PF} \mathbf{s} + b_{PF}) \\
+p_{LRA} = \sigma(W_{LRA} \mathbf{s} + b_{LRA})
+```
 
 4. **加权聚合**：
-   $$\mathbf{c}_{PF} = \frac{\sum_{i} p_{PF}^{(i)} \mathbf{s}^{(i)}}{\sum_{i} p_{PF}^{(i)} + \epsilon}$$
-   $$\mathbf{c}_{LRA} = \frac{\sum_{i} p_{LRA}^{(i)} \mathbf{s}^{(i)}}{\sum_{i} p_{LRA}^{(i)} + \epsilon}$$
+
+``` math
+\mathbf{c}_{PF(LRA)} = \frac{\sum_{i} p_{PF(LRA)}^{(i)} \mathbf{s}^{(i)}}{\sum_{i} p_{PF(LRA)}^{(i)} + \epsilon}
+```
 
 5. **最终预测**：
-   $$\mathbf{y}_{PF} = W_{assess\_PF} \mathbf{c}_{PF} + b_{assess\_PF}$$
-   $$\mathbf{y}_{LRA} = W_{assess\_LRA} \mathbf{c}_{LRA} + b_{assess\_LRA}$$
+``` math
+\mathbf{y}_{PF(LRA)} = W_{assess\_PF(LRA)} \mathbf{c}_{PF(LRA)} + b_{assess\_PF(LRA)}
+```
 
 ---
 
@@ -169,9 +181,9 @@ Linear(768 → 192) → ReLU → Dropout(0.7) → Linear(192 → 3)
 
 采用加权二元交叉熵损失处理不平衡数据：
 
-$$
+``` math
 L_{BCE}(y, \hat{y}) = -\sum_{i=1}^{N} w_i [y_i \log(\sigma(\hat{y}_i)) + (1-y_i) \log(1-\sigma(\hat{y}_i))]
-$$
+```
 
 其中：
 - $w_i = \sqrt{\frac{n_{neg}}{n_{pos}}}$：正样本权重
@@ -180,17 +192,17 @@ $$
 
 **总损失函数**：
 
-$$
+``` math
 L_{total} = L_{PF\_score} + L_{PF\_US} + L_{PF\_neg} + L_{Threat\_up} + L_{Threat\_down} + L_{Citizen\_impact}
-$$
+```
 
 ### 4.2 优化策略
 
 采用AdamW优化器，具有权重衰减正则化：
 
-$$
+``` math
 \theta_{t+1} = \theta_t - \eta_t [\frac{m_t}{\sqrt{v_t} + \epsilon} + \lambda \theta_t]
-$$
+```
 
 其中：
 - $\eta_t$：学习率
@@ -201,9 +213,9 @@ $$
 
 **准确率计算**：
 
-$$
+``` math
 \text{Accuracy} = \frac{\sum_{i=1}^{6} \sum_{j=1}^{N} \mathbb{1}[\sigma(\hat{y}_{ij}) > 0.5] = y_{ij}]}{6N}
-$$
+```
 
 其中：
 - $N$：样本数量
@@ -775,15 +787,15 @@ plt.savefig('./data/loss-plot.svg')
 #### 8.1.1 二分类准确率
 对每个任务维度计算：
 
-$$
+``` math
 \text{Accuracy}_i = \frac{\text{TP}_i + \text{TN}_i}{\text{TP}_i + \text{TN}_i + \text{FP}_i + \text{FN}_i}
-$$
+```
 
 #### 8.1.2 整体准确率
 
-$$
+``` math
 \text{Overall Accuracy} = \frac{1}{6} \sum_{i=1}^{6} \text{Accuracy}_i
-$$
+```
 
 #### 8.1.3 损失监控
 监控训练和验证损失的收敛情况，防止过拟合。
@@ -1390,9 +1402,14 @@ def batch_predict(data_df, model, tokenizer, max_len, device):
 ---
 
 **文档版本**: 1.0
+
+
 **最后更新**: 2025年7月8日  
+
 **作者**: H.S
+
 **项目代码**: [Natural-Language-by-H.S](https://github.com/Huaseon/Natural-Language-by-H.S)
+
 **联系方式**: dsj34473@163.com
 
 **致谢**: 感谢DeepSeek团队提供的API支持，以及Hugging Face团队提供的预训练模型和工具库。
