@@ -50,10 +50,10 @@ BERT (Bidirectional Encoder Representations from Transformers) 是一个基于Tr
 ```
 
 其中：
-- $Q$：查询矩阵 (Query)
-- $K$：键矩阵 (Key)  
-- $V$：值矩阵 (Value)
-- $d_k$：键向量的维度
+- $Q$ ：查询矩阵 (Query)
+- $K$ ：键矩阵 (Key)  
+- $V$ ：值矩阵 (Value)
+- $d_k$ ：键向量的维度
 
 **多头注意力：**
 
