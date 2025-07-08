@@ -1,5 +1,4 @@
-# TextAssessor: 基于BERT的双任务文本评估模型技术文档
-
+# TextAssessor: 基于BERT的文本评估模型
 ## 目录
 
 1. [概述](#概述)
@@ -20,9 +19,9 @@
 
 ### 1.1 项目背景
 
-TextAssessor是一个基于BERT预训练模型的双任务文本评估系统，专门用于伙伴部队能力评估和上帝抵抗军威胁分析的自动化文本处理。该系统是对RAND公司研究报告[《Leveraging Machine Learning for Operation Assessment》](https://www.rand.org/pubs/research_reports/RR4196.html)的技术拓展和实现。
+TextAssessor是一个基于BERT预训练模型的文本评估模型，专门用于伙伴部队能力评估和上帝抵抗军威胁分析的自动化文本处理。该模型是对RAND公司研究报告[《Leveraging Machine Learning for Operation Assessment》](https://www.rand.org/pubs/research_reports/RR4196.html)在深度学习上的技术拓展和实现。
 
-该系统能够同时处理两类评估任务：
+该模型能够同时处理两类评估任务：
 - **PF (Partner Force) 评估**：伙伴部队能力评估，包括PF_score、PF_US、PF_neg三个维度
 - **LRA (Lord's Resistance Army) 评估**：上帝抵抗军威胁评估，包括Threat_up、Threat_down、Citizen_impact三个维度
 
@@ -33,7 +32,7 @@ TextAssessor是一个基于BERT预训练模型的双任务文本评估系统，�
 - **分阶段训练策略**：采用五+F阶段渐进式训练，逐步解冻更多的预训练层
 - **不平衡数据处理**：使用正样本权重调整处理标签不平衡问题
 - **完整工具链**：集成数据清洗、关键词标注、API调用、权重计算等核心工具函数
-- **自动化标注**：基于DeepSeek API的智能文本标注系统
+- **自动化标注**：基于DeepSeek API的智能文本标注
 
 ---
 
