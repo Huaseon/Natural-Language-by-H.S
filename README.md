@@ -206,7 +206,7 @@ L_{total} = L_{PF\_score} + L_{PF\_US} + L_{PF\_neg} + L_{Threat\_up} + L_{Threa
 
 其中：
 - $\eta_t$ ：学习率
-- $m_t$ 、$v_t$ ：动量估计
+- $m_t$ 、 $v_t$ ：动量估计
 - $\lambda$ ：权重衰减系数
 
 ### 4.3 评估指标
