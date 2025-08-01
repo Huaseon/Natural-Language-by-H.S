@@ -11,8 +11,9 @@ torch.cuda.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 
 class TextAssessor(nn.Module):
-    def __init__(self, dropout: float=0.7):
+    def __init__(self, n1: int, n2: list, dropout: float=0.7):
         super().__init__()
+        assert len(n2) == n1
         self.dropout = dropout
         
         self.text_encoder = BertModel.from_pretrained(PRETRAINED_MODEL_NAME)
@@ -21,12 +22,14 @@ class TextAssessor(nn.Module):
         #     param.requires_grad = False
 
         encode_dim = self.text_encoder.config.hidden_size
-        
-        self.PF_filter = self._build_filter(in_features=encode_dim)
-        self.LRA_filter = self._build_filter(in_features=encode_dim)
 
-        self.PF_assessor = self._build_assessor(in_features=encode_dim)
-        self.LRA_assessor = self._build_assessor(in_features=encode_dim)
+        self.filter = nn.ModuleList(
+            [self._build_filter(in_features=encode_dim) for _ in range(n1)]
+        )
+        
+        self.assessor = nn.ModuleList(
+            [self._build_assessor(in_features=encode_dim, n_classes=_n2) for _n2 in n2]
+        )
 
     def forward(self, inputs):
         logitss = []
@@ -34,7 +37,7 @@ class TextAssessor(nn.Module):
             input_ids, attention_mask = input['input_ids'], input['attention_mask']
             logits = self._forward(input_ids=input_ids, attention_mask=attention_mask)
             logitss.append(logits)
-        logitss = torch.stack(logitss, dim=0) # [n, n_classes]
+        logitss = torch.stack(logitss, dim=0) # [n, n2]
         return logitss
     
     def _forward(self, input_ids, attention_mask):
@@ -50,20 +53,17 @@ class TextAssessor(nn.Module):
             encoder_outputs.last_hidden_state * mask, dim=1
         ) / (torch.sum(mask, dim=1) + 1e-8) # [n, encode_dim]
 
-        PF_probs = self.PF_filter(sentence_embeddings).squeeze(-1) # [n]
-        LRA_probs = self.LRA_filter(sentence_embeddings).squeeze(-1) # [n]
+        logits = []
 
-        PF_avg = torch.sum(
-            sentence_embeddings * PF_probs.unsqueeze(-1), dim=0
-        ) / (PF_probs.sum(dim=0, keepdim=True) + 1e-8) # [encode_dim]
-        LRA_avg = torch.sum(
-            sentence_embeddings * LRA_probs.unsqueeze(-1), dim=0
-        ) / (LRA_probs.sum(dim=0, keepdim=True) + 1e-8) # [encode_dim]
+        for filter, assessor in zip(self.filter, self.assessor):
+            probs = filter(sentence_embeddings).squeeze(-1) # [n]
+            avg = torch.sum(
+                sentence_embeddings * probs.unsqueeze(-1), dim=0
+            ) / (probs.sum(dim=0, keepdim=True) + 1e-8) # [encode_dim]
+            assessments = assessor(avg) # [_n2]
+            logits.append(assessments)
 
-        PF_assessments = self.PF_assessor(PF_avg) # [n_classes]
-        LRA_assessments = self.LRA_assessor(LRA_avg) # [n_classes]
-
-        return torch.hstack([PF_assessments, LRA_assessments])
+        return torch.hstack(logits) # [n, n2]
 
     def _build_filter(self, in_features: int, hidden_size_rate: int=4):
         return nn.Sequential(
@@ -106,14 +106,13 @@ def compute_loss(outputs, targets, pos_weights, device):
 
 def _compute_loss(output, target, pos_weights, device):
 
-    loss_PF_score = F.binary_cross_entropy_with_logits(output[0], target['PF_score'], pos_weight=torch.tensor(pos_weights.get('PF_score', 1.)).sqrt().to(device))
-    loss_PF_US = F.binary_cross_entropy_with_logits(output[1], target['PF_US'], pos_weight=torch.tensor(pos_weights.get('PF_US', 1.)).sqrt().to(device))
-    loss_PF_neg = F.binary_cross_entropy_with_logits(output[2], target['PF_neg'], pos_weight=torch.tensor(pos_weights.get('PF_neg', 1.)).sqrt().to(device))
-    loss_Threat_up = F.binary_cross_entropy_with_logits(output[3], target['Threat_up'], pos_weight=torch.tensor(pos_weights.get('Threat_up', 1.)).sqrt().to(device))
-    loss_Threat_down = F.binary_cross_entropy_with_logits(output[4], target['Threat_down'], pos_weight=torch.tensor(pos_weights.get('Threat_down', 1.)).sqrt().to(device))
-    loss_Citizen_impace = F.binary_cross_entropy_with_logits(output[5], target['Citizen_impact'], pos_weight=torch.tensor(pos_weights.get('Citizen_impact', 1.)).sqrt().to(device))
-
-    total_loss = loss_PF_score + loss_PF_US + loss_PF_neg + loss_Threat_up + loss_Threat_down + loss_Citizen_impace
+    loss_Threat_up = F.binary_cross_entropy_with_logits(output[0], target['THREAT_up'], pos_weight=torch.tensor(pos_weights.get('THREAT_up', 1.)).sqrt().to(device))
+    loss_Threat_down = F.binary_cross_entropy_with_logits(output[1], target['THREAT_down'], pos_weight=torch.tensor(pos_weights.get('THREAT_down', 1.)).sqrt().to(device))
+    loss_Citizen_impace = F.binary_cross_entropy_with_logits(output[2], target['citizen_impact'], pos_weight=torch.tensor(pos_weights.get('citizen_impact', 1.)).sqrt().to(device))
+    loss_PF_score = F.binary_cross_entropy_with_logits(output[3], target['PF_score'], pos_weight=torch.tensor(pos_weights.get('PF_score', 1.)).sqrt().to(device))
+    loss_PF_US = F.binary_cross_entropy_with_logits(output[4], target['PF_US'], pos_weight=torch.tensor(pos_weights.get('PF_US', 1.)).sqrt().to(device))
+    
+    total_loss = loss_PF_score + loss_PF_US + loss_Threat_up + loss_Threat_down + loss_Citizen_impace
 
     return total_loss
 
@@ -224,12 +223,11 @@ def predict_one(data_text, model, tokenizer, max_len, device):
     assessments = outputs.sigmoid().cpu().numpy()
 
     return {
-        "pred.values.PF_score": assessments[0],
-        "pred.values.PF_US": assessments[1],
-        "pred.values.PF_neg": assessments[2],
-        "pred.values.Threat_up": assessments[3],
-        "pred.values.Threat_down": assessments[4],
-        "pred.values.Citizen_impact": assessments[5],
+        "pred.values.THREAT_up": assessments[0],
+        "pred.values.THREAT_down": assessments[1],
+        "pred.values.citizen_impact": assessments[2],
+        "pred.values.PF_score": assessments[3],
+        "pred.values.PF_US": assessments[4],
     }
 
 def acculate_accuracy(outputs, targets):
@@ -245,12 +243,12 @@ def _acculate_accuracy(output, target):
 
     assessments = (output.sigmoid() > 0.5).float()
 
-    correct += assessments[0].eq(target['PF_score']).sum().item() + \
-                assessments[1].eq(target['PF_US']).sum().item() + \
-                assessments[2].eq(target['PF_neg']).sum().item() + \
-                assessments[3].eq(target['Threat_up']).sum().item() + \
-                assessments[4].eq(target['Threat_down']).sum().item() + \
-                assessments[5].eq(target['Citizen_impact']).sum().item()
+    correct +=  assessments[0].eq(target['THREAT_up']).sum().item() + \
+                assessments[1].eq(target['THREAT_down']).sum().item() + \
+                assessments[2].eq(target['citizen_impact']).sum().item() + \
+                assessments[3].eq(target['PF_score']).sum().item() + \
+                assessments[4].eq(target['PF_US']).sum().item()
+
     total += assessments.numel()
 
     return correct / (total + 1e-8)
