@@ -200,3 +200,4 @@ bert-base-uncased/
 *.svg
 *.bak
 DEBUG.ipynb
+.*/

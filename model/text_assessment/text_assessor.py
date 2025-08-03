@@ -23,13 +23,12 @@ class TextAssessor(nn.Module):
 
         encode_dim = self.text_encoder.config.hidden_size
 
-        self.filter = nn.ModuleList(
-            [self._build_filter(in_features=encode_dim) for _ in range(n1)]
-        )
-        
-        self.assessor = nn.ModuleList(
-            [self._build_assessor(in_features=encode_dim, n_classes=_n2) for _n2 in n2]
-        )
+        self.outputs = nn.ModuleList([
+            nn.ModuleDict({
+                'filter': self._build_filter(in_features=encode_dim),
+                'assessor': self._build_assessor(in_features=encode_dim, n_classes=_n2)
+            }) for _n2 in n2
+        ])
 
     def forward(self, inputs):
         logitss = []
@@ -48,18 +47,20 @@ class TextAssessor(nn.Module):
         ) # [last_hidden_state, pooler_output]
         
         mask = attention_mask.unsqueeze(-1).expand(encoder_outputs.last_hidden_state.size()).float() # [n, seq_len, encode_dim]
-         # [n, encode_dim]
         sentence_embeddings = torch.sum(
             encoder_outputs.last_hidden_state * mask, dim=1
         ) / (torch.sum(mask, dim=1) + 1e-8) # [n, encode_dim]
 
         logits = []
-
-        for filter, assessor in zip(self.filter, self.assessor):
-            probs = filter(sentence_embeddings).squeeze(-1) # [n]
+        
+        for output in self.outputs:
+            filter = output['filter']
+            assessor = output['assessor']
+            
+            probs = filter(sentence_embeddings) # [n, encode_dim]
             avg = torch.sum(
-                sentence_embeddings * probs.unsqueeze(-1), dim=0
-            ) / (probs.sum(dim=0, keepdim=True) + 1e-8) # [encode_dim]
+                sentence_embeddings * probs, dim=0
+            ) / (probs.sum(dim=0) + 1e-8) # [encode_dim]
             assessments = assessor(avg) # [_n2]
             logits.append(assessments)
 
@@ -67,20 +68,20 @@ class TextAssessor(nn.Module):
 
     def _build_filter(self, in_features: int, hidden_size_rate: int=4):
         return nn.Sequential(
-            nn.Linear(in_features=in_features, out_features=in_features // hidden_size_rate),
-            nn.LayerNorm(in_features // hidden_size_rate),
+            nn.Linear(in_features=in_features, out_features=in_features * hidden_size_rate),
+            nn.LayerNorm(in_features * hidden_size_rate),
             nn.LeakyReLU(0.1),
             nn.Dropout(p=self.dropout),
-            nn.Linear(in_features=in_features // hidden_size_rate, out_features=1),
+            nn.Linear(in_features=in_features * hidden_size_rate, out_features=in_features),
             nn.Sigmoid()
         )
     
     def _build_assessor(self, in_features: int, hidden_size_rate: int=4, n_classes: int=3):
         return nn.Sequential(
-            nn.Linear(in_features=in_features, out_features=in_features // hidden_size_rate),
+            nn.Linear(in_features=in_features, out_features=in_features * hidden_size_rate),
             nn.ReLU(),
             nn.Dropout(p=self.dropout),
-            nn.Linear(in_features=in_features // hidden_size_rate, out_features=n_classes)
+            nn.Linear(in_features=in_features * hidden_size_rate, out_features=n_classes)
         )
 
     def save(self, save_model: str=None):
@@ -132,7 +133,7 @@ def train_epoch(model, dataloader, optimizer, device, pos_weights, criterion=com
 
         total_loss += loss.item()
 
-        correct += acculate_accuracy(outputs, batch)
+        correct += caculate_accuracy(outputs, batch)
 
     avg_train_loss = total_loss / len(dataloader)
     avg_accuracy = 100 * correct / len(dataloader)
@@ -152,7 +153,7 @@ def evaluate(model, dataloader, device, pos_weights, criterion=compute_loss):
 
             total_loss += loss.item()
 
-            correct += acculate_accuracy(outputs, batch)
+            correct += caculate_accuracy(outputs, batch)
 
     avg_loss = total_loss / len(dataloader)
     avg_accuracy = 100 * correct / len(dataloader)
@@ -175,7 +176,7 @@ def train_model(model, train_dataloader, test_dataloader, optimizer, device, epo
         train_accs.append(train_acc)
         test_losses.append(test_loss)
         test_accs.append(test_acc)
-        if epoch % 10 == 0:
+        if epoch % 7 == 0:
             plt.figure(figsize=(12, 6))
             plt.subplot(1, 2, 1)
             plt.plot(train_losses, label='Train Loss')
@@ -230,14 +231,14 @@ def predict_one(data_text, model, tokenizer, max_len, device):
         "pred.values.PF_US": assessments[4],
     }
 
-def acculate_accuracy(outputs, targets):
+def caculate_accuracy(outputs, targets):
     accuracy = .0
     for output, target in zip(outputs, targets):
-        accuracy += _acculate_accuracy(output, target)
+        accuracy += _caculate_accuracy(output, target)
 
     return accuracy / len(outputs)
 
-def _acculate_accuracy(output, target):
+def _caculate_accuracy(output, target):
     correct = 0
     total = 0
 

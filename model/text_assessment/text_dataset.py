@@ -14,7 +14,7 @@ torch.cuda.manual_seed_all(SEED)
 
 class TextDataset(Dataset):
     def __init__(self, df: pd.DataFrame, tokenizer: BertTokenizer, max_len: int=MAX_LEN, device: str='cpu'):
-        self.df = df.dropna(subset=['summary']).copy()
+        self.df = df.dropna(subset=df.columns).copy()
         self.tokenizer = tokenizer
         self.df.reset_index(drop=True, inplace=True)
         self.to_literal()

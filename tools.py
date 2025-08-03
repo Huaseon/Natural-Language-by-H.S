@@ -57,7 +57,7 @@ def ask_deepseek(ask):
 def get_pos_weights(df, targets):
     f = lambda x: x[0] / x[1]
     weights = {
-        key: f(df[key].value_counts()[[0, 1]].to_numpy())
+        key: f(df[key].value_counts()[[0.0, 1.0]].to_numpy())
         for key in targets
     }
     return weights
