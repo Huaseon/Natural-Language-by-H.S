@@ -53,45 +53,47 @@
 
 1. **掩码平均池化**
    对每个句子 $i$，计算：
-   ``` math
+
+   $$
    e_{i} = \frac{\sum_{t=1}^{L}m_{i,t} \odot h_{i,t}}{\sum_{t=1}^{L}m_{i,t}+\epsilon} \in \mathbb{R}^{H}
-   ```
+   $$
+
    其中 $\odot$ 为逐元素乘法。
 2. **Filter（sigmoid 注意力权重）**
    所有句子的嵌入为 $e = [e_{1}, \dots, e_{n}] \in \mathbb{R}^{n \times H}$，$e_{i}$ 为掩码平均池化得到的句子嵌入，计算：
 
-   ``` math
+   $$
    a = \sigma(W_{f,2}g(W_{f,1}e+b_{f,1})+b_{f,2}) \in \mathbb{R}^{n \times H}
-   ```
+   $$
 
    其中 $g(\cdot) = \mathrm{LeakyReLU}(\mathrm{LayerNorm}(\cdot))$。
 3. **加权平均池化**
    根据 `filter` 注意力 $a=[a_{1}, \dots, a_{n}]^{\mathrm{T}}$，计算：
 
-   ``` math
+   $$
    s = \frac{\sum_{i=1}^{n}a_{i}^{\mathrm{T}} \odot e_{i}}{\sum_{i=1}^{n}a_{i} + \epsilon} \in \mathbb{R}^{H}
-   ```
+   $$
 
 4. **评估器（MLP头部）**
    对于每个目标头部 $j$，应用两层 MLP：
    
-   ``` math
+   $$
    z_{j}^{(1)} = \mathrm{ReLU}(W_{j}^{(1)}s + b_{j}^{(1)}) \\y_{j} = W_{j}^{(2)}z_{j}^{(1)} + b_{j}^{(2)},\ \ \ y_{j} \in \mathbb{R}^{C_{j}}
-   ```
+   $$
    
    其中 $C_{j}$ 是目标 $j$ 的类别数，$y_{j}$ 为部分评估目标 `logits`。
 5. **最终输出**
    所有评估输出拼接：
    
-   ``` math
+   $$
    f(h, m) = [y_{1}, \dots, y_{J}] \in \mathbb{R}^{\sum_{j}c_{j}}
-   ```
+   $$
    
    拼接结果经 `sigmoid` 映射到 `[0,1]`，得到顺位评估。
 6. **数学表达式总结**
     模型的前向传播可表示为符合函数：
     
-    ``` math
+    $$
     f(h, m) = \bigoplus_{j} \left(
         W_{j}^{(2)} \cdot {
             \mathrm{ReLU} \left(
@@ -129,7 +131,7 @@
             \right)
         } + b_{j}^{(2)}
         \right)
-        ```
+        $$
         
         其中 $\odot$ 表示逐元素乘法，$g(\cdot) = \mathrm{LeakyReLU}{(\mathrm{LayerNorm}{(\cdot)})}$，$\bigoplus$ 表示向量拼接。
 
@@ -140,36 +142,39 @@
 1. **多头自注意力（$H_{head}$ 个头）**
    对于头部 $h = 1 \dots H_{head}$：
    
-   ``` math
+   $$
    Q^{h} = XW_{Q}^{h} + b_{Q}^{h}, K^{h} = XW_{K}^{h} + b_{K}^{h}, V^{h} = XW_{V}^{h} + b_{V}^{h} \\ \mathrm{head}_{h} = \mathrm{softmax}{\left(\frac{Q^{h}K^{h\mathrm{T}}}{\sqrt{{d_{k}}}}\right)}
-   ```
+   $$
    
    然后头部拼接：
    
-   ``` math
+   $$
    \mathrm{MHSA}(X) = [\mathrm{head}_1, \dots, \mathrm{head}_{H_{head}}]W^{O} + b^{O}
-   ```
+   $$
+
 2. **残差+归一化**
    
-   ``` math
+   $$
    \tilde{X} = \mathrm{LayerNorm}(X + \mathrm{MHSA}(X))
-   ```
+   $$
+
 3. **前馈网络**
    
-   ``` math
+   $$
    \mathrm{FFN}(\tilde{X}) = \mathrm{GeLU}(\tilde{X}W_1 + b_1)W_2 + b_2
-   ```
+   $$
+
 4. **残差+归一化**
    
-   ``` math
+   $$
    X^{(\ell + 1)} = \mathrm{LayerNorm}(\tilde{X} + \mathrm{FFN}(\tilde{X}))
-   ```
+   $$
 
 经过 $L_{enc}$ 个这样的块后，BERT 编码器返回 `token` 输出（`last_hidden_state`）和一个池化表示（`pooler_output`），其计算方式为：
 
-``` math
+$$
 u = \mathrm{tanh}(H_{E}^{(L_{enc})}[\mathrm{CLS}]W_{pool} + b_{pool})
-```
+$$
 
 其中 $H_{E}^{(L_{enc})}[\mathrm{CLS}]$ 是 `[CLS]` 在最终层的隐藏状态，记 $u$ 为 `pooler_output`，$H_{E}^{(L_{enc})}$ 为 `last_hidden_state`，`last_hidden_state` 作为下游任务输入。
 
