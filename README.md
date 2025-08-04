@@ -61,7 +61,7 @@ e_{i} = \frac{\sum_{t=1}^{L}m_{i,t} \odot h_{i,t}}{\sum_{t=1}^{L}m_{i,t}+\epsilo
    其中 $\odot$ 为逐元素乘法。
 
 2. **Filter（sigmoid 注意力权重）**
-   所有句子的嵌入为 $e = [e_{1}, \dots, e_{n}] \in \mathbb{R}^{n \times H}$，$e_{i}$ 为掩码平均池化得到的句子嵌入，计算：
+   所有句子的嵌入为 $e = [e_{1}, \dots, e_{n}] \in \mathbb{R}^{n \times H}$， $e_{i}$ 为掩码平均池化得到的句子嵌入，计算：
 
 ``` math
 a = \sigma(W_{f,2}g(W_{f,1}e+b_{f,1})+b_{f,2}) \in \mathbb{R}^{n \times H}
@@ -83,7 +83,7 @@ s = \frac{\sum_{i=1}^{n}a_{i}^{\mathrm{T}} \odot e_{i}}{\sum_{i=1}^{n}a_{i} + \e
 z_{j}^{(1)} = \mathrm{ReLU}(W_{j}^{(1)}s + b_{j}^{(1)}) \\y_{j} = W_{j}^{(2)}z_{j}^{(1)} + b_{j}^{(2)},\ \ \ y_{j} \in \mathbb{R}^{C_{j}}
 ```
    
-   其中 $C_{j}$ 是目标 $j$ 的类别数，$y_{j}$ 为部分评估目标 `logits`。
+   其中 $C_{j}$ 是目标 $j$ 的类别数， $y_{j}$ 为部分评估目标 `logits`。
 
 5. **最终输出**
    所有评估输出拼接：
@@ -93,6 +93,7 @@ f(h, m) = [y_{1}, \dots, y_{J}] \in \mathbb{R}^{\sum_{j}c_{j}}
 ```
    
    拼接结果经 `sigmoid` 映射到 `[0,1]`，得到顺位评估。
+
 6. **数学表达式总结**
     模型的前向传播可表示为符合函数：
     
@@ -136,13 +137,13 @@ f(h, m) = \bigoplus_{j} \left(
 \right)
 ```
 
-    其中 $\odot$ 表示逐元素乘法，$g(\cdot) = \mathrm{LeakyReLU}{(\mathrm{LayerNorm}{(\cdot)})}$，$\bigoplus$ 表示向量拼接。
+    其中 $\odot$ 表示逐元素乘法， $g(\cdot) = \mathrm{LeakyReLU}{(\mathrm{LayerNorm}{(\cdot)})}$ ， $\bigoplus$ 表示向量拼接。
 
 #### 4.1.2 BERT 编码器数学表达
 
 设输入序列为 $X = [x_1, \dots, x_L], x_t = E_{tok}(w_t) + E_{pos}(t) \in \mathbb{R}^{H}$。第 $\ell$ 层 Transformer 块：
 
-1. **多头自注意力（$H_{head}$ 个头）**
+1. **多头自注意力（ $H_{head}$ 个头）**
    对于头部 $h = 1 \dots H_{head}$：
    
 ``` math
@@ -155,19 +156,19 @@ Q^{h} = XW_{Q}^{h} + b_{Q}^{h}, K^{h} = XW_{K}^{h} + b_{K}^{h}, V^{h} = XW_{V}^{
 \mathrm{MHSA}(X) = [\mathrm{head}_1, \dots, \mathrm{head}_{H_{head}}]W^{O} + b^{O}
 ```
 
-1. **残差+归一化**
+2. **残差+归一化**
    
 ``` math
 \tilde{X} = \mathrm{LayerNorm}(X + \mathrm{MHSA}(X))
 ```
 
-2. **前馈网络**
+3. **前馈网络**
    
 ``` math
 \mathrm{FFN}(\tilde{X}) = \mathrm{GeLU}(\tilde{X}W_1 + b_1)W_2 + b_2
 ```
 
-3. **残差+归一化**
+4. **残差+归一化**
    
 ``` math
 X^{(\ell + 1)} = \mathrm{LayerNorm}(\tilde{X} + \mathrm{FFN}(\tilde{X}))
@@ -179,7 +180,7 @@ X^{(\ell + 1)} = \mathrm{LayerNorm}(\tilde{X} + \mathrm{FFN}(\tilde{X}))
 u = \mathrm{tanh}(H_{E}^{(L_{enc})}[\mathrm{CLS}]W_{pool} + b_{pool})
 ```
 
-其中 $H_{E}^{(L_{enc})}[\mathrm{CLS}]$ 是 `[CLS]` 在最终层的隐藏状态，记 $u$ 为 `pooler_output`，$H_{E}^{(L_{enc})}$ 为 `last_hidden_state`，`last_hidden_state` 作为下游任务输入。
+其中 $H_{E}^{(L_{enc})}[\mathrm{CLS}]$ 是 `[CLS]` 在最终层的隐藏状态，记 $u$ 为 `pooler_output`， $H_{E}^{(L_{enc})}$ 为 `last_hidden_state`，`last_hidden_state` 作为下游任务输入。
 
 ### 4.2. 损失与不平衡处理
 
