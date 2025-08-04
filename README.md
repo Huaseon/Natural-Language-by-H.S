@@ -59,6 +59,7 @@ e_{i} = \frac{\sum_{t=1}^{L}m_{i,t} \odot h_{i,t}}{\sum_{t=1}^{L}m_{i,t}+\epsilo
 ```
 
    其中 $\odot$ 为逐元素乘法。
+
 2. **Filter（sigmoid 注意力权重）**
    所有句子的嵌入为 $e = [e_{1}, \dots, e_{n}] \in \mathbb{R}^{n \times H}$，$e_{i}$ 为掩码平均池化得到的句子嵌入，计算：
 
@@ -67,6 +68,7 @@ a = \sigma(W_{f,2}g(W_{f,1}e+b_{f,1})+b_{f,2}) \in \mathbb{R}^{n \times H}
 ```
 
    其中 $g(\cdot) = \mathrm{LeakyReLU}(\mathrm{LayerNorm}(\cdot))$。
+
 3. **加权平均池化**
    根据 `filter` 注意力 $a=[a_{1}, \dots, a_{n}]^{\mathrm{T}}$，计算：
 
@@ -74,7 +76,7 @@ a = \sigma(W_{f,2}g(W_{f,1}e+b_{f,1})+b_{f,2}) \in \mathbb{R}^{n \times H}
 s = \frac{\sum_{i=1}^{n}a_{i}^{\mathrm{T}} \odot e_{i}}{\sum_{i=1}^{n}a_{i} + \epsilon} \in \mathbb{R}^{H}
 ```
 
-1. **评估器（MLP头部）**
+4. **评估器（MLP头部）**
    对于每个目标头部 $j$，应用两层 MLP：
    
 ``` math
@@ -82,7 +84,8 @@ z_{j}^{(1)} = \mathrm{ReLU}(W_{j}^{(1)}s + b_{j}^{(1)}) \\y_{j} = W_{j}^{(2)}z_{
 ```
    
    其中 $C_{j}$ 是目标 $j$ 的类别数，$y_{j}$ 为部分评估目标 `logits`。
-2. **最终输出**
+
+5. **最终输出**
    所有评估输出拼接：
    
 ``` math
@@ -90,7 +93,7 @@ f(h, m) = [y_{1}, \dots, y_{J}] \in \mathbb{R}^{\sum_{j}c_{j}}
 ```
    
    拼接结果经 `sigmoid` 映射到 `[0,1]`，得到顺位评估。
-3. **数学表达式总结**
+6. **数学表达式总结**
     模型的前向传播可表示为符合函数：
     
 ``` math
