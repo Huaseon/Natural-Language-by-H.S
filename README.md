@@ -137,7 +137,7 @@ f(h, m) = \bigoplus_{j} \left(
 \right)
 ```
 
-    其中 $\odot$ 表示逐元素乘法， $g(\cdot) = \mathrm{LeakyReLU}{(\mathrm{LayerNorm}{(\cdot)})}$ ， $\bigoplus$ 表示向量拼接。
+其中 $\odot$ 表示逐元素乘法， $g(\cdot) = \mathrm{LeakyReLU}{(\mathrm{LayerNorm}{(\cdot)})}$ ， $\bigoplus$ 表示向量拼接。
 
 #### 4.1.2 BERT 编码器数学表达
 
