@@ -20,6 +20,7 @@ class TextDataset(Dataset):
         self.to_literal()
         self.max_len = max_len
         self.device = device
+        self.buff = {}
     
     def to_literal(self):
         self.df['summary'] = self.df.summary.apply(lambda x: split('[\.\;]\s', x.replace('*', '')))
@@ -43,6 +44,6 @@ class TextDataset(Dataset):
             'PF_score': torch.tensor(cur.PF_score, device=self.device, dtype=torch.float),
             'PF_US': torch.tensor(cur.PF_US, device=self.device, dtype=torch.float),
         }
-
+        
 def collate_fn(batch):
     return batch

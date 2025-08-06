@@ -120,8 +120,8 @@ def _compute_loss(output, target, pos_weights, device):
 from tqdm.auto import tqdm
 def train_epoch(model, dataloader, optimizer, device, pos_weights, criterion=compute_loss):
     model.train()
-    train_losses = []
-    accuracies = []
+    total_loss = .0
+    accuracies = .0
 
     for idx, batch in tqdm(enumerate(dataloader), desc="Epoch", total=len(dataloader), leave=False):
         optimizer.zero_grad()
@@ -131,34 +131,33 @@ def train_epoch(model, dataloader, optimizer, device, pos_weights, criterion=com
         loss.backward()
         optimizer.step()
 
-        train_losses.append(loss.item())
+        total_loss + loss.item()
+        accuracies += caculate_accuracy(outputs, batch)
 
-        accuracies.append(caculate_accuracy(outputs, batch))
-
-    avg_train_loss = sum(train_losses) / len(train_losses)
-    avg_accuracy = 100 * sum(accuracies) / len(accuracies)
+    avg_train_loss = total_loss / len(dataloader)
+    avg_accuracy = 100 * accuracies / len(dataloader)
     print(f"- Average training loss: {avg_train_loss:.4f}\t\tAccuracy: {avg_accuracy:.2f}%")
 
-    return train_losses, accuracies
+    return total_loss, accuracies
 
 def evaluate(model, dataloader, device, pos_weights, criterion=compute_loss):
     model.eval()
-    losses = []
-    accuracies = []
+    total_loss = .0
+    accuracies = .0
 
     with torch.no_grad():
         for idx, batch in tqdm(enumerate(dataloader), desc="Evaluation", total=len(dataloader), leave=False):
             outputs = model(batch)
             loss = criterion(outputs, batch, pos_weights=pos_weights, device=device)
 
-            losses.append(loss.item())
-            accuracies.append(caculate_accuracy(outputs, batch))
+            total_loss += loss.item()
+            accuracies += caculate_accuracy(outputs, batch)
 
-    avg_loss = sum(losses) / len(losses)
-    avg_accuracy = 100 * sum(accuracies) / len(accuracies)
+    avg_loss = total_loss / len(dataloader)
+    avg_accuracy = 100 * accuracies / len(dataloader)
     print(f"+ Average evaluation loss: {avg_loss:.4f}\t\tAccuracy: {avg_accuracy:.2f}%")
 
-    return losses, accuracies
+    return avg_loss, avg_accuracy
 
 import matplotlib.pyplot as plt
 def train_model(model, train_dataloader, test_dataloader, optimizer, device, epochs, pos_weights={}, criterion=compute_loss, losses={'train': [], 'test': []}, accs={'train': [], 'test': []}) -> tuple[TextAssessor, dict, dict]:
@@ -171,10 +170,10 @@ def train_model(model, train_dataloader, test_dataloader, optimizer, device, epo
         train_loss, train_acc = train_epoch(model=model, dataloader=train_dataloader, optimizer=optimizer, device=device, criterion=criterion, pos_weights=pos_weights.get('train', {}))
         test_loss, test_acc = evaluate(model=model, dataloader=test_dataloader, criterion=criterion, device=device, pos_weights=pos_weights.get('test', {}))
 
-        train_losses.extend(train_loss)
-        train_accs.extend(train_acc)
-        test_losses.extend(test_loss)
-        test_accs.extend(test_acc)
+        train_losses.append(train_loss)
+        train_accs.append(train_acc)
+        test_losses.append(test_loss)
+        test_accs.append(test_acc)
 
         plt.figure(figsize=(12, 6))
         plt.subplot(1, 2, 1)
