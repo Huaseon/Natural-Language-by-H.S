@@ -1,5 +1,5 @@
 SEED = 20040508
-FILENAME = 'analysis_result_simple_format_30000_with_summary.xlsx'
+FILENAME = 'analysis_result_simple_format_80000_with_summary.xlsx'
 
 # %%
 import matplotlib
@@ -97,7 +97,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=7,
+    epochs=1,
     pos_weights=pos_weights
 )
 
@@ -128,7 +128,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=14,
+    epochs=1,
     pos_weights=pos_weights,
     losses=losses,
     accs=accs
@@ -164,7 +164,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=7,
+    epochs=1,
     pos_weights=pos_weights,
     losses=losses,
     accs=accs
@@ -203,7 +203,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=7,
+    epochs=1,
     pos_weights=pos_weights,
     losses=losses,
     accs=accs
@@ -227,10 +227,10 @@ plt.plot(accs.get('test'), label='Test Accuracy')
 plt.legend()
 plt.title('Accuracy over epochs')
 
-plt.savefig('./data/loss-plot_A(35).svg')
+plt.savefig('./data/loss-plot_A(4).svg')
 plt.close()
 
-model.save(save_model='./data/text_assessor_A(35).pth')
+model.save(save_model='./data/text_assessor_A(4).pth')
 
 # %% 第五阶段
 print("=" * 30 + "\tTraining phase 5\t" + "=" * 30)
@@ -265,7 +265,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=7,
+    epochs=1,
     pos_weights=pos_weights,
     losses=losses,
     accs=accs
@@ -288,10 +288,10 @@ plt.plot(accs.get('test'), label='Test Accuracy')
 plt.legend()
 plt.title('Accuracy over epochs')
 
-plt.savefig('./data/loss-plot_B(42).svg')
+plt.savefig('./data/loss-plot_B(5).svg')
 plt.close()
 
-model.save(save_model='./data/text_assessor_B(42).pth')
+model.save(save_model='./data/text_assessor_B(5).pth')
 
 # %% 最后阶段
 print("=" * 30 + "\tFinal Model State\t" + "=" * 30)
@@ -339,7 +339,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=21,
+    epochs=2,
     pos_weights=pos_weights,
     losses={'train': [], 'test': []},
     accs={'train': [], 'test': []}
@@ -362,8 +362,8 @@ plt.plot(accs.get('test'), label='Test Accuracy')
 plt.legend()
 plt.title('Accuracy over epochs')
 
-plt.savefig('./data/loss-plot_C(63).svg')
+plt.savefig('./data/loss-plot_C(7).svg')
 plt.close()
 
-model.save(save_model='./data/text_assessor_C(63).pth')
+model.save(save_model='./data/text_assessor_C(7).pth')
 

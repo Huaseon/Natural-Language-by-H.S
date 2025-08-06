@@ -176,7 +176,7 @@ def train_model(model, train_dataloader, test_dataloader, optimizer, device, epo
         train_accs.append(train_acc)
         test_losses.append(test_loss)
         test_accs.append(test_acc)
-        if epoch % 7 == 0:
+        if epoch % 1 == 0:
             plt.figure(figsize=(12, 6))
             plt.subplot(1, 2, 1)
             plt.plot(train_losses, label='Train Loss')
