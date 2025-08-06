@@ -120,8 +120,8 @@ def _compute_loss(output, target, pos_weights, device):
 from tqdm.auto import tqdm
 def train_epoch(model, dataloader, optimizer, device, pos_weights, criterion=compute_loss):
     model.train()
-    total_loss = .0
-    correct = 0
+    train_losses = []
+    accuracies = []
 
     for idx, batch in tqdm(enumerate(dataloader), desc="Epoch", total=len(dataloader), leave=False):
         optimizer.zero_grad()
@@ -131,35 +131,34 @@ def train_epoch(model, dataloader, optimizer, device, pos_weights, criterion=com
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item()
+        train_losses.append(loss.item())
 
-        correct += caculate_accuracy(outputs, batch)
+        accuracies.append(caculate_accuracy(outputs, batch))
 
-    avg_train_loss = total_loss / len(dataloader)
-    avg_accuracy = 100 * correct / len(dataloader)
+    avg_train_loss = sum(train_losses) / len(train_losses)
+    avg_accuracy = 100 * sum(accuracies) / len(accuracies)
     print(f"- Average training loss: {avg_train_loss:.4f}\t\tAccuracy: {avg_accuracy:.2f}%")
 
-    return avg_train_loss, avg_accuracy
+    return train_losses, accuracies
 
 def evaluate(model, dataloader, device, pos_weights, criterion=compute_loss):
     model.eval()
-    total_loss = .0
-    correct = 0
+    losses = []
+    accuracies = []
 
     with torch.no_grad():
         for idx, batch in tqdm(enumerate(dataloader), desc="Evaluation", total=len(dataloader), leave=False):
             outputs = model(batch)
             loss = criterion(outputs, batch, pos_weights=pos_weights, device=device)
 
-            total_loss += loss.item()
+            losses.append(loss.item())
+            accuracies.append(caculate_accuracy(outputs, batch))
 
-            correct += caculate_accuracy(outputs, batch)
-
-    avg_loss = total_loss / len(dataloader)
-    avg_accuracy = 100 * correct / len(dataloader)
+    avg_loss = sum(losses) / len(losses)
+    avg_accuracy = 100 * sum(accuracies) / len(accuracies)
     print(f"+ Average evaluation loss: {avg_loss:.4f}\t\tAccuracy: {avg_accuracy:.2f}%")
 
-    return avg_loss, avg_accuracy
+    return losses, accuracies
 
 import matplotlib.pyplot as plt
 def train_model(model, train_dataloader, test_dataloader, optimizer, device, epochs, pos_weights={}, criterion=compute_loss, losses={'train': [], 'test': []}, accs={'train': [], 'test': []}) -> tuple[TextAssessor, dict, dict]:
@@ -172,42 +171,26 @@ def train_model(model, train_dataloader, test_dataloader, optimizer, device, epo
         train_loss, train_acc = train_epoch(model=model, dataloader=train_dataloader, optimizer=optimizer, device=device, criterion=criterion, pos_weights=pos_weights.get('train', {}))
         test_loss, test_acc = evaluate(model=model, dataloader=test_dataloader, criterion=criterion, device=device, pos_weights=pos_weights.get('test', {}))
 
-        train_losses.append(train_loss)
-        train_accs.append(train_acc)
-        test_losses.append(test_loss)
-        test_accs.append(test_acc)
-        if epoch % 1 == 0:
-            plt.figure(figsize=(12, 6))
-            plt.subplot(1, 2, 1)
-            plt.plot(train_losses, label='Train Loss')
-            plt.plot(test_losses, label='Test Loss')
-            plt.legend()
-            plt.title('Loss over epochs')
+        train_losses.extend(train_loss)
+        train_accs.extend(train_acc)
+        test_losses.extend(test_loss)
+        test_accs.extend(test_acc)
 
-            plt.subplot(1, 2, 2)
-            plt.plot(train_accs, label='Train Accuracy')
-            plt.plot(test_accs, label='Test Accuracy')
-            plt.legend()
-            plt.title('Accuracy over epochs')
+        plt.figure(figsize=(12, 6))
+        plt.subplot(1, 2, 1)
+        plt.plot(train_losses, label='Train Loss')
+        plt.plot(test_losses, label='Test Loss')
+        plt.legend()
+        plt.title('Loss over epochs')
 
-            plt.savefig('./data/loss-plot.svg')
-            plt.close()
+        plt.subplot(1, 2, 2)
+        plt.plot(train_accs, label='Train Accuracy')
+        plt.plot(test_accs, label='Test Accuracy')
+        plt.legend()
+        plt.title('Accuracy over epochs')
 
-    plt.figure(figsize=(12, 6))
-    plt.subplot(1, 2, 1)
-    plt.plot(train_losses, label='Train Loss')
-    plt.plot(test_losses, label='Test Loss')
-    plt.legend()
-    plt.title('Loss over epochs')
-
-    plt.subplot(1, 2, 2)
-    plt.plot(train_accs, label='Train Accuracy')
-    plt.plot(test_accs, label='Test Accuracy')
-    plt.legend()
-    plt.title('Accuracy over epochs')
-
-    plt.savefig('./data/loss-plot.svg')
-    plt.close()
+        plt.savefig('./data/loss-plot.svg')
+        plt.close()
     
     return model, losses, accs
 

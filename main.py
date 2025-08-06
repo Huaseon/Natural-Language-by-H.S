@@ -26,7 +26,7 @@ print()
 
 # %%
 from sklearn.model_selection import train_test_split as tts
-train_data, test_data = tts(df, test_size=1/3, random_state=SEED)
+train_data, test_data = tts(df, test_size=2/3, random_state=SEED)
 print(f"train_data shape: {train_data.shape}\t\ttest_data shape: {test_data.shape}\n")
 
 # %%
@@ -214,7 +214,7 @@ print("Model training completed and saved.\n")
 
 # %%
 import matplotlib.pyplot as plt
-plt.figure(figsize=(12, 6))
+plt.figure(figsize=(5, 2))
 plt.subplot(1, 2, 1)
 plt.plot(losses.get('train'), label='Train Loss')
 plt.plot(losses.get('test'), label='Test Loss')
@@ -275,7 +275,7 @@ model.save()
 print("Model training completed and saved.\n")
 
 # %%
-plt.figure(figsize=(12, 6))
+plt.figure(figsize=(5, 2))
 plt.subplot(1, 2, 1)
 plt.plot(losses.get('train'), label='Train Loss')
 plt.plot(losses.get('test'), label='Test Loss')
@@ -328,11 +328,6 @@ optimizer = AdamW(
 )
 print(f"oprimizer: {json.dumps(optimizer.state_dict(), indent=2)}\n")
 
-batch_size = 6
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
-print(f"train_dataloader length: {len(train_dataloader)}\ttest_dataloader length: {len(test_dataloader)}\n")
-
 model, losses, accs = train_model(
     model=model,
     train_dataloader=train_dataloader,
@@ -341,15 +336,15 @@ model, losses, accs = train_model(
     device=device,
     epochs=2,
     pos_weights=pos_weights,
-    losses={'train': [], 'test': []},
-    accs={'train': [], 'test': []}
+    losses=losses,
+    accs=accs
 )
 
 model.save()
 print("Model training completed and saved.\n")
 
 # %%
-plt.figure(figsize=(12, 6))
+plt.figure(figsize=(5, 2))
 plt.subplot(1, 2, 1)
 plt.plot(losses.get('train'), label='Train Loss')
 plt.plot(losses.get('test'), label='Test Loss')
@@ -366,4 +361,10 @@ plt.savefig('./data/loss-plot_C(7).svg')
 plt.close()
 
 model.save(save_model='./data/text_assessor_C(7).pth')
+
+loss_df = pd.DataFrame(losses)
+acc_df = pd.DataFrame(accs)
+loss_df.to_csv('./data/loss.csv', index=False)
+acc_df.to_csv('./data/acc.csv', index=False)
+print("loss adn acc saved!\n")
 
