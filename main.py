@@ -354,8 +354,8 @@ plt.plot(accs.get('test'), label='Test Accuracy')
 plt.legend()
 plt.title('Accuracy over epochs')
 
-plt.savefig('./data/loss-plot_C(160).svg')
+plt.savefig('./data/loss-plot_C(168).svg')
 plt.close()
 
-model.save(save_model='./data/text_assessor_C(160).pth')
+model.save(save_model='./data/text_assessor_C(168).pth')
 
