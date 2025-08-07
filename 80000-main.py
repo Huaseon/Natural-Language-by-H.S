@@ -38,7 +38,7 @@ print(f"dataset size: {dataset.__len__()}\n")
 
 # %%
 from torch.utils.data import random_split
-train_dataset, test_dataset = random_split(dataset, [33600, len(dataset) - 33600])
+train_dataset, test_dataset = random_split(dataset, [33600 // 2, len(dataset) - 33600 // 2])
 print(f"train_dataset.size: {train_dataset.__len__()}\t\ttest_dataset.size: {test_dataset.__len__()}\n")
 
 # %%
@@ -83,7 +83,7 @@ from torch.optim import AdamW
 # %% 第一阶段
 print("=" * 30 + "\tTraining Phase 1\t" + "=" * 30)
 
-train_dataloader = DataLoader(random_split(train_dataset, lengths=[16800, len(train_dataset) - 16800])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+train_dataloader = DataLoader(random_split(train_dataset, lengths=[16800 // 2, len(train_dataset) - 16800 // 2])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 print(f"train_dataloader length: {len(train_dataloader)}\ttest_dataloader length: {len(test_dataloader)}\n")
 
 optimizer = AdamW(
@@ -103,7 +103,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=1,
+    epochs=2,
     pos_weights=pos_weights
 )
 
@@ -113,7 +113,7 @@ print("Model training completed and saved.\n")
 # %% 第二阶段
 print("=" * 30 + "\tTraining Phase 2\t" + "=" * 30)
 
-train_dataloader = DataLoader(random_split(train_dataset, lengths=[12000, len(train_dataset) - 12000])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+train_dataloader = DataLoader(random_split(train_dataset, lengths=[12000 // 2, len(train_dataset) - 12000 // 2])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 print(f"train_dataloader length: {len(train_dataloader)}\ttest_dataloader length: {len(test_dataloader)}\n")
 
 for param in model.text_encoder.pooler.parameters():
@@ -138,7 +138,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=1,
+    epochs=2,
     pos_weights=pos_weights,
     losses=losses,
     accs=accs
@@ -150,7 +150,7 @@ print("Model training completed and saved.\n")
 # %% 第三阶段
 print("=" * 30 + "\tTraining Phase 3\t" + "=" * 30)
 
-train_dataloader = DataLoader(random_split(train_dataset, lengths=[16800, len(train_dataset) - 16800])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+train_dataloader = DataLoader(random_split(train_dataset, lengths=[16800 // 2, len(train_dataset) - 16800 // 2])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 print(f"train_dataloader length: {len(train_dataloader)}\ttest_dataloader length: {len(test_dataloader)}\n")
 
 for param in model.text_encoder.encoder.layer[-1:].parameters():
@@ -178,7 +178,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=1,
+    epochs=2,
     pos_weights=pos_weights,
     losses=losses,
     accs=accs
@@ -190,7 +190,7 @@ print("Model training completed and saved.\n")
 # %% 第四阶段
 print("=" * 30 + "\tTraining Phase 4\t" + "=" * 30)
 
-train_dataloader = DataLoader(random_split(train_dataset, lengths=[16800, len(train_dataset) - 16800])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+train_dataloader = DataLoader(random_split(train_dataset, lengths=[16800 // 2, len(train_dataset) - 16800 // 2])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 print(f"train_dataloader length: {len(train_dataloader)}\ttest_dataloader length: {len(test_dataloader)}\n")
 
 for param in model.text_encoder.encoder.layer[-3:-1].parameters():
@@ -221,7 +221,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=1,
+    epochs=8,
     pos_weights=pos_weights,
     losses=losses,
     accs=accs
@@ -245,15 +245,15 @@ plt.plot(accs.get('test'), label='Test Accuracy')
 plt.legend()
 plt.title('Accuracy over epochs')
 
-plt.savefig('./data/80000-loss-plot_A(4).svg')
+plt.savefig('./data/80000-loss-plot_A(8).svg')
 plt.close()
 
-model.save(save_model='./data/80000-text_assessor_A(4).pth')
+model.save(save_model='./data/80000-text_assessor_A(8).pth')
 
 # %% 第五阶段
 print("=" * 30 + "\tTraining phase 5\t" + "=" * 30)
 
-train_dataloader = DataLoader(random_split(train_dataset, lengths=[21600, len(train_dataset) - 21600])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+train_dataloader = DataLoader(random_split(train_dataset, lengths=[21600 // 2, len(train_dataset) - 21600 // 2])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 print(f"train_dataloader length: {len(train_dataloader)}\ttest_dataloader length: {len(test_dataloader)}\n")
 
 for param in model.text_encoder.encoder.layer[-7:-3].parameters():
@@ -287,7 +287,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=1,
+    epochs=2,
     pos_weights=pos_weights,
     losses=losses,
     accs=accs
@@ -310,15 +310,15 @@ plt.plot(accs.get('test'), label='Test Accuracy')
 plt.legend()
 plt.title('Accuracy over epochs')
 
-plt.savefig('./data/80000-loss-plot_B(5).svg')
+plt.savefig('./data/80000-loss-plot_B(10).svg')
 plt.close()
 
-model.save(save_model='./data/80000-text_assessor_B(5).pth')
+model.save(save_model='./data/80000-text_assessor_B(10).pth')
 
 # %% 最后阶段
 print("=" * 30 + "\tFinal Model State\t" + "=" * 30)
 
-train_dataloader = DataLoader(random_split(train_dataset, lengths=[33600, len(train_dataset) - 33600])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+train_dataloader = DataLoader(random_split(train_dataset, lengths=[33600 // 2, len(train_dataset) - 33600 // 2])[0], batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 print(f"train_dataloader length: {len(train_dataloader)}\ttest_dataloader length: {len(test_dataloader)}\n")
 
 for param in model.text_encoder.encoder.layer.parameters():
@@ -360,7 +360,7 @@ model, losses, accs = train_model(
     test_dataloader=test_dataloader,
     optimizer=optimizer,
     device=device,
-    epochs=1,
+    epochs=2,
     pos_weights=pos_weights,
     losses=losses,
     accs=accs
@@ -383,10 +383,10 @@ plt.plot(accs.get('test'), label='Test Accuracy')
 plt.legend()
 plt.title('Accuracy over epochs')
 
-plt.savefig('./data/80000-loss-plot_C(6).svg')
+plt.savefig('./data/80000-loss-plot_C(12).svg')
 plt.close()
 
-model.save(save_model='./data/80000-text_assessor_C(6).pth')
+model.save(save_model='./data/80000-text_assessor_C(12).pth')
 
 loss_df = pd.DataFrame(losses)
 acc_df = pd.DataFrame(accs)
