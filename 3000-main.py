@@ -12,6 +12,7 @@ import torch
 torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
+torch.Generator().manual_seed(SEED)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}\n")
@@ -25,20 +26,19 @@ print(df.head())
 print()
 
 # %%
-from sklearn.model_selection import train_test_split as tts
-
-train_data, test_data = tts(df, test_size=.2, random_state=SEED)
-print(f"train_data shape: {train_data.shape}\t\ttest_data shape: {test_data.shape}\n")
-
-# %%
 from model.text_assessment import MAX_LEN
 max_len = MAX_LEN
+print(f"max_len: {max_len}\n")
 
 # %%
 from transformers import BertTokenizer
 tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)
-train_dataset = TextDataset(df=train_data, tokenizer=tokenizer, max_len=max_len, device=device)
-test_dataset = TextDataset(df=test_data, tokenizer=tokenizer, max_len=max_len, device=device)
+dataset = TextDataset(df=df, tokenizer=tokenizer, max_len=max_len, device=device)
+print(f"dataset size: {dataset.__len__()}\n")
+
+# %%
+from torch.utils.data import random_split
+train_dataset, test_dataset = random_split(dataset, [2400, len(dataset) - 2400])
 print(f"train_dataset.size: {train_dataset.__len__()}\t\ttest_dataset.size: {test_dataset.__len__()}\n")
 
 # %%
@@ -66,8 +66,9 @@ print(f"Sample data - PF_US: {sample_data['PF_US']}\n")
 from torch.utils.data import DataLoader
 from model.text_assessment.text_dataset import collate_fn
 batch_size = 6
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+print(f"batch_size: {batch_size}")
 print(f"train_dataloader length: {len(train_dataloader)}\ttest_dataloader length: {len(test_dataloader)}\n")
 
 # %%
@@ -78,9 +79,12 @@ for param in model.text_encoder.parameters():
 print(model)
 print()
 
+# %%
+from torch.optim import AdamW
+
 # %% 第一阶段
 print("=" * 30 + "\tTraining Phase 1\t" + "=" * 30)
-from torch.optim import AdamW
+
 optimizer = AdamW(
     [
         {
@@ -107,6 +111,7 @@ print("Model training completed and saved.\n")
 
 # %% 第二阶段
 print("=" * 30 + "\tTraining Phase 2\t" + "=" * 30)
+
 for param in model.text_encoder.pooler.parameters():
     param.requires_grad = True
 
@@ -140,6 +145,7 @@ print("Model training completed and saved.\n")
 
 # %% 第三阶段
 print("=" * 30 + "\tTraining Phase 3\t" + "=" * 30)
+
 for param in model.text_encoder.encoder.layer[-1:].parameters():
     param.requires_grad = True
 
@@ -176,6 +182,7 @@ print("Model training completed and saved.\n")
 
 # %% 第四阶段
 print("=" * 30 + "\tTraining Phase 4\t" + "=" * 30)
+
 for param in model.text_encoder.encoder.layer[-3:-1].parameters():
     param.requires_grad = True
 
@@ -228,13 +235,14 @@ plt.plot(accs.get('test'), label='Test Accuracy')
 plt.legend()
 plt.title('Accuracy over epochs')
 
-plt.savefig('./data/3000-loss-plot_A(30).svg')
+plt.savefig('./data/3000-loss-plot_A(26).svg')
 plt.close()
 
-model.save(save_model='./data/3000-text_assessor_A(30).pth')
+model.save(save_model='./data/3000-text_assessor_A(26).pth')
 
 # %% 第五阶段
 print("=" * 30 + "\tTraining phase 5\t" + "=" * 30)
+
 for param in model.text_encoder.encoder.layer[-7:-3].parameters():
     param.requires_grad = True
 
@@ -289,13 +297,14 @@ plt.plot(accs.get('test'), label='Test Accuracy')
 plt.legend()
 plt.title('Accuracy over epochs')
 
-plt.savefig('./data/3000-loss-plot_B(41).svg')
+plt.savefig('./data/3000-loss-plot_B(35).svg')
 plt.close()
 
-model.save(save_model='./data/3000-text_assessor_B(41).pth')
+model.save(save_model='./data/3000-text_assessor_B(35).pth')
 
 # %% 最后阶段
 print("=" * 30 + "\tFinal Model State\t" + "=" * 30)
+
 for param in model.text_encoder.encoder.layer.parameters():
     param.requires_grad = True
 for param in model.text_encoder.embeddings.parameters():
@@ -358,10 +367,10 @@ plt.plot(accs.get('test'), label='Test Accuracy')
 plt.legend()
 plt.title('Accuracy over epochs')
 
-plt.savefig('./data/3000-loss-plot_C(58).svg')
+plt.savefig('./data/3000-loss-plot_C(49).svg')
 plt.close()
 
-model.save(save_model='./data/3000-text_assessor_C(58).pth')
+model.save(save_model='./data/3000-text_assessor_C(49).pth')
 
 loss_df = pd.DataFrame(losses)
 acc_df = pd.DataFrame(accs)
