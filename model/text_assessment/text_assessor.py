@@ -85,13 +85,20 @@ class TextAssessor(nn.Module):
         )
 
     def save(self, save_model: str=None):
-        torch.save(self.state_dict(), save_model or SAVED_MODEL)
+        params = {
+            'n1': len(self.outputs),
+            'n2': [len(output['assessor']) for output in self.outputs],
+            'dropout': self.dropout,
+            'model': self.state_dict()
+        }
+        torch.save(params, save_model or SAVED_MODEL)
         print(f"saved model to {save_model or SAVED_MODEL}\n")
 
     @classmethod
     def loads(cls, save_model, device):
-        model = cls().to(device)
-        model.load_state_dict(torch.load(save_model, map_location=device))
+        params = torch.load(save_model, map_location=device)
+        model = cls(n1=params['n1'], n2=params['n2'], dropout=params['dropout']).to(device)
+        model.load_state_dict(params['model'])
         model.eval()
         print(f"loaded model from {save_model}\n")
         return model
@@ -131,7 +138,7 @@ def train_epoch(model, dataloader, optimizer, device, pos_weights, criterion=com
         loss.backward()
         optimizer.step()
 
-        total_loss + loss.item()
+        total_loss += loss.item()
         accuracies += caculate_accuracy(outputs, batch)
 
     avg_train_loss = total_loss / len(dataloader)
