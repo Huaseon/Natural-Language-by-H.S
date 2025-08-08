@@ -143,7 +143,7 @@ def train_epoch(model, dataloader, optimizer, device, pos_weights, criterion=com
 
     avg_train_loss = total_loss / len(dataloader)
     avg_accuracy = 100 * accuracies / len(dataloader)
-    print(f"- Average training loss: {avg_train_loss:.4f}\t\tAccuracy: {avg_accuracy:.2f}%")
+    # print(f"- Average training loss: {avg_train_loss:.4f}\t\tAccuracy: {avg_accuracy:.2f}%")
 
     return avg_train_loss, avg_accuracy
 
@@ -162,7 +162,7 @@ def evaluate(model, dataloader, device, pos_weights, criterion=compute_loss):
 
     avg_loss = total_loss / len(dataloader)
     avg_accuracy = 100 * accuracies / len(dataloader)
-    print(f"+ Average evaluation loss: {avg_loss:.4f}\t\tAccuracy: {avg_accuracy:.2f}%")
+    # print(f"+ Average evaluation loss: {avg_loss:.4f}\t\tAccuracy: {avg_accuracy:.2f}%")
 
     return avg_loss, avg_accuracy
 

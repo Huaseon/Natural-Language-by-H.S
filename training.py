@@ -133,6 +133,7 @@ def split_train_val_test(df: pd.DataFrame, tokenizer: BertTokenizer) -> Tuple[pd
     dataset = TextDataset(df=df, tokenizer=tokenizer, max_len=MAX_LEN, device=get_device())
     return random_split(dataset, [.12, .08, .8])
 
+
 # %%
 def get_device() -> torch.device:
     return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -371,7 +372,7 @@ def main():
             tr_loss, _ = train_epoch(model=model, dataloader=dl_train, optimizer=optimizer, device=device, pos_weights=pos_weights_train)
             
             # 进行验证
-            val_probs, val_true = collect_probs_targets(model, dl_val, device)
+            val_probs, val_true = collect_probs_targets(model, dl_val)
             # 以0.5为阈值进行验证集上的平均f1分数计算度量准确率
             val_pred05 = (val_probs >= 0.5).astype(np.float32)
             try:
@@ -412,17 +413,17 @@ def main():
                 break
 
         # 保存每个阶段的最后模型
-        torch.save({'model': model.state_dict()}, OUTPUT_DIR + '/' + f'{phase['name']}_last.pth')
+        torch.save({'model': model.state_dict()}, OUTPUT_DIR + '/' + f'{phase["name"]}_last.pth')
         print(f"保存阶段模型: {phase['name']}_last.pth\n")
 
     # 加载最佳模型状态
     if best_state is not None:
         model.load_state_dict(best_state['model'])
         model.eval()
-        print(f"加载最有模型: {best_state['phase']}")
+        print(f"加载最有模型: {best_state['phase']}\n")
 
     # 确定验证集上的阈值
-    val_probs, val_true = collect_probs_targets(model, dl_val, device)
+    val_probs, val_true = collect_probs_targets(model, dl_val)
     thresholds = find_best_thresholds(val_true, val_probs)
     with open(OUTPUT_DIR + '/' + 'thresholds.json', 'w') as f:
         json.dump({label: thr for label, thr in zip(LABELS, thresholds)}, f, indent=2)
@@ -432,7 +433,7 @@ def main():
     save_metrics_csv(OUTPUT_DIR + '/' + 'metrics_val.csv', metrics_val)
 
     # 测试集评估
-    test_probs, test_true = collect_probs_targets(model, dl_test, device)
+    test_probs, test_true = collect_probs_targets(model, dl_test)
     metrics_test = compute_metrics(test_true, test_probs, thresholds)
     save_metrics_csv(OUTPUT_DIR + '/' + 'metrics_test.csv', metrics_test)
 
