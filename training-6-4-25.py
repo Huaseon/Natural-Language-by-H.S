@@ -46,28 +46,28 @@ SEED = 20040508
 FILENAME = 'analysis_result_simple_format_80000_with_summary.xlsx'
 LABELS = ['THREAT_up', 'THREAT_down', 'citizen_impact', 'PF_score', 'PF_US']
 BATCH_SIZE = 6
-PATIENCE = 3 # 早停
-OUTPUT_DIR = './output'
+PATIENCE = 4 # 早停
+OUTPUT_DIR = './6-4-25'
 WEIGHT_DECAY_PHASE = 1e-3
 WEIGHT_DECAY_FINAL = 1e-4
 
 # %% 渐进微调配置 迭代次数和学习率
 PHASES = [
     {  # Phase 1: 输出层
-        'name': 'phase1', 'epochs': 11,
+        'name': 'phase1', 'epochs': 25,
         'lrs': {
             'outputs': 1e-6,
         },
     },
     {  # Phase 2: + [CLS]池化层
-        'name': 'phase2', 'epochs': 11,
+        'name': 'phase2', 'epochs': 25,
         'lrs': {
             'outputs': 1e-6,
             'pooler': 8e-7,
         },
     },
     {  # Phase 3: + last 1 layer
-        'name': 'phase3', 'epochs': 11,
+        'name': 'phase3', 'epochs': 25,
         'lrs': {
             'outputs': 1e-6,
             'pooler': 8e-7,
@@ -75,7 +75,7 @@ PHASES = [
         },
     },
     {  # Phase 4: + last 3->1 layers
-        'name': 'phase4', 'epochs': 11,
+        'name': 'phase4', 'epochs': 25,
         'lrs': {
             'outputs': 1e-6,
             'pooler': 1e-6,
@@ -84,7 +84,7 @@ PHASES = [
         },
     },
     {  # Phase 5: + last 7->3 layers
-        'name': 'phase5', 'epochs': 11,
+        'name': 'phase5', 'epochs': 25,
         'lrs': {
             'outputs': 1e-6,
             'pooler': 1e-6,
@@ -94,7 +94,7 @@ PHASES = [
         },
     },
     {  # Phase 6: + rest of encoder
-        'name': 'phase6', 'epochs': 11,
+        'name': 'phase6', 'epochs': 25,
         'lrs': {
             'outputs': 1e-6,
             'pooler': 1e-6,
@@ -105,7 +105,7 @@ PHASES = [
         },
     },
     {  # Final: 所有层
-        'name': 'final', 'epochs': 11,
+        'name': 'final', 'epochs': 25,
         'lrs': {
             'outputs': 1e-6,
             'pooler': 1e-6,
