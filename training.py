@@ -420,7 +420,7 @@ def main():
     if best_state is not None:
         model.load_state_dict(best_state['model'])
         model.eval()
-        print(f"加载最有模型: {best_state['phase']}\n")
+        print(f"加载最优模型: {best_state['phase']}\n")
 
     # 确定验证集上的阈值
     val_probs, val_true = collect_probs_targets(model, dl_val)
