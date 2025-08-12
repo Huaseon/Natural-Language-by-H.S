@@ -197,7 +197,7 @@ cython_debug/
 pass/
 bert-base-uncased/
 *.pth
-*.svg
+# *.svg
 *.bak
 DEBUG.ipynb
 .*/
