@@ -18,9 +18,6 @@ class TextAssessor(nn.Module):
         
         self.text_encoder = BertModel.from_pretrained(PRETRAINED_MODEL_NAME)
         
-        # for param in self.text_encoder.parameters():
-        #     param.requires_grad = False
-
         encode_dim = self.text_encoder.config.hidden_size
 
         self.outputs = nn.ModuleList([
