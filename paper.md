@@ -187,12 +187,58 @@
 ## 2 网络设计
 
 ### 2.1 主干编码器（Backbone）
-- 使用本地 `BertModel` 加载（`PRETRAINED_MODEL_NAME='./model/bert-base-uncased'`）。隐藏维度 `hidden_size` 由预训练权重配置确定。
-- 随机种子：统一在模块级与脚本级设置为 `20040508`（见 `model/text_assessment/__init__.py` 与各 `training-3-2-*.py` 中的 `set_seed`）。
+
+本工作采用双向 Transformer 语言模型 BERT 作为语义编码骨干，以本地离线权重进行初始化并在下游任务上进行渐进式微调。记 tokenizer 为 WordPiece，编码器为 `BertModel`，其参数以 \(\theta\) 表示，隐藏维度为 \(h\)。
+
+1) 参数化与初始化
+- 词表与子词化：采用与权重配套的本地 tokenizer（`model/bert-base-uncased`），确保子词边界与嵌入矩阵一致；
+- 模型结构：`BertModel` 包含嵌入层、L 层 Transformer 编码器与池化器（`pooler`），隐藏维度 \(h=\texttt{config.hidden\_size}\)；
+- 权重来源：通过 `from_pretrained(PRETRAINED_MODEL_NAME)` 自本地目录载入，避免在线下载导致的版本漂移，保证实验可复现性与离线可用性。
+
+2) 前向计算与输出
+- 对于单句子张量 \(X_i\) 与掩码 \(m_i\)（见 1.2 节），编码器返回 token 级隐状态 \(H_{i}\in\mathbb{R}^{L\times h}\)；
+- 本工作不使用默认 `pooler\_output` 作为文档表示，而是在 1.2 节采用基于掩码的均值池化获取句向量 \(e_i\)，再在 1.3 节通过门控机制获得任务特定的文档表示；
+- 该设计规避了 CLS 单点表示的潜在偏置，并与后续句级门控的结构性需求一致。
+
+3) 微调策略与冻结计划
+- 采用“渐进解冻”的微调方案：先仅训练输出头参数，再依次解冻 `pooler`、最后一层、倒数第 3→1 层、倒数第 7→3 层，最终解冻剩余编码层与嵌入层（详见各 `training-3-2-*.py` 的 `PHASES` 配置）；
+- 优化器选用 AdamW，并对不同子模块设置差异化学习率（如 `outputs`、`pooler`、`enc_last1`、`enc_last3to1`、`enc_last7to3`、`enc_rest`、`embeddings`），以减小灾难性遗忘并提升收敛稳定性；
+- 随机种子在模块与脚本双重设置为 20040508，以降低随机性对实验的影响。
+
+4) 本地化与稳定性考量
+- 本地 checkpoint：`PRETRAINED_MODEL_NAME='./model/bert-base-uncased'`，保证 tokenizer、配置与权重的一致性；
+- 数值稳定：训练中配合 LayerNorm、Dropout 与小学习率策略；句向量与门控阶段引入 \(\varepsilon\) 以避免除零；
+- 资源友好：以句子为批维进行并行编码，相较直接拼接全摘要为超长序列，可显著降低显存占用并提升吞吐。
 
 ### 2.2 句级表示与池化
-- Token 级隐状态经 mask 平均得到句向量：对每句在 token 维加权平均，避免 padding 干扰。
-- 得到句向量矩阵 `S ∈ R^{n_sentences × hidden}`，作为后续门控与评估的输入。
+
+为从 token 级隐状态获得稳定且可解释的句级表示，本文采用基于掩码的均值池化（masked mean pooling）。设 1.2 节中得到的编码张量为 \(H\in\mathbb{R}^{n\times L\times h}\) 与注意掩码 \(M\in\{0,1\}^{n\times L}\)，其中 \(n\) 为句子数，\(L\) 为每句的统一长度（padding/truncation 后），\(h\) 为隐藏维度。记第 \(i\) 句的隐状态与掩码分别为 \(H_i\in\mathbb{R}^{L\times h}\)、\(m_i\in\{0,1\}^{L}\)。
+
+1) 掩码均值池化的定义
+- 对每个句子，句向量 \(e_i\in\mathbb{R}^{h}\) 定义为：
+  \[
+  e_i = \frac{\sum_{k=1}^{L} m_{ik}\, H_{ik}}{\sum_{k=1}^{L} m_{ik} + \varepsilon},\qquad i=1,\dots,n,
+  \]
+  其中分子为对有效 token 的逐元素求和，分母为有效 token 计数，\(\varepsilon\) 为数值稳定项（实现中取 \(10^{-8}\)）。将所有 \(e_i\) 沿句维堆叠得到句级表示矩阵
+  \[
+  E = (e_1,\dots,e_n)^{\top} \in \mathbb{R}^{n\times h}.
+  \]
+  该 \(E\) 将在 1.3 节作为门控过滤的输入。
+
+2) 性质与理论考量
+- Padding 不变性：当 \(m_{ik}=0\) 时，对应位置对分子与分母均无贡献，从而对 \(e_i\) 无影响，保证对不同原始句长的一致性；
+- 可微与稳定性：均值池化在有效位置上对 \(H_{ik}\) 的梯度为常数因子 \(1/(\sum_k m_{ik}+\varepsilon)\)，有利于稳定反传；\(\varepsilon\) 抑制极短句或空句导致的数值异常；
+- 统计稳健性：相较单点表征（如 [CLS]），均值能降低个别 token 噪声的影响；在样本量有限时，较低的可训练自由度通常带来更好的泛化；
+- 复杂度：时间复杂度 \(\mathcal{O}(n\,L\,h)\)，与一次线性缩减同量级，适配长摘要与多句并行。
+
+3) 与替代方案的对比
+- [CLS] 池化：将信息集中于单个位置，易受预训练域偏置与句式差异影响；
+- token 级注意池化：可学习性强但引入额外注意参数与归一化竞争，易在小样本下过拟合；
+- 本文取 masked mean 作为“稳健基座”，并在 1.3 节以句级-特征级门控补足选择性表达能力。
+
+4) 实现对齐
+- 对应实现位于 `model/text_assessment/text_assessor.py` 的 `_forward`：以 `attention_mask` 为 \(M\)，对 `last_hidden_state` 做掩码加权求和并除以有效长度；
+- 输出形状与记号一致：`sentence_embeddings` 即 \(E\in\mathbb{R}^{n\times h}\)，作为后续门控与任务头的输入。
 
 ### 2.3 门控过滤（Filter Head）
 - 结构：`Linear → LayerNorm → LeakyReLU → Dropout → Linear → Sigmoid`，输出与输入同维度的权重矩阵 `P ∈ (0,1)^{n_sentences × hidden}`。
