@@ -100,34 +100,6 @@ class TextAssessor(nn.Module):
         print(f"loaded model from {save_model}\n")
         return model
 
-class CLSPooling(TextAssessor):
-    def __init__(self, n1, n2, dropout = 0.7):
-        super().__init__(n1, n2, dropout)
-
-    def _forward(self, input_ids, attention_mask):
-        # inputs_ids: [n, seq_len]
-        # attention_mask: [n, seq_len]
-        encoder_outputs = self.text_encoder(
-            input_ids=input_ids, attention_mask=attention_mask
-        ) # [last_hidden_state, pooler_output]
-        
-        sentence_embeddings = encoder_outputs.last_hidden_state # [n, encode_dim]
-
-        logits = []
-        
-        for output in self.outputs:
-            filter = output['filter']
-            assessor = output['assessor']
-            
-            probs = filter(sentence_embeddings) # [n, encode_dim]
-            avg = torch.sum(
-                sentence_embeddings * probs, dim=0
-            ) / (probs.sum(dim=0) + 1e-8) # [encode_dim]
-            assessments = assessor(avg) # [_n2]
-            logits.append(assessments)
-
-        return torch.hstack(logits) # [n, n2]
-
 import torch.nn.functional as F
 
 def compute_loss(outputs, targets, pos_weights, device):
