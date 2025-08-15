@@ -241,24 +241,138 @@
 - 输出形状与记号一致：`sentence_embeddings` 即 \(E\in\mathbb{R}^{n\times h}\)，作为后续门控与任务头的输入。
 
 ### 2.3 门控过滤（Filter Head）
-- 结构：`Linear → LayerNorm → LeakyReLU → Dropout → Linear → Sigmoid`，输出与输入同维度的权重矩阵 `P ∈ (0,1)^{n_sentences × hidden}`。
-- 融合：按元素乘法得到加权句向量并在句维求和，随后按权重和归一，形成文档级表示 `v ∈ R^{hidden}`。该过程在每个任务头内独立执行，支持任务特定的注意选择。
+本节形式化给出“句级-特征级门控”的结构与计算。设 2.2 节获得的句向量矩阵为 \(E=(e_1,\dots,e_n)^{\top}\in\mathbb{R}^{n\times h}\)。对每个任务头 \(t\)（本项目中共有两路，随后分别接 `Assessor`），定义逐句共享参数的门控映射
+\[
+g_{\phi^{(t)}}:\; \mathbb{R}^{h}\to(0,1)^h,\qquad p^{(t)}_i = g_{\phi^{(t)}}(e_i),\quad i=1,\dots,n,
+\]
+并堆叠得到 \(P^{(t)}\in(0,1)^{n\times h}\)。门控为“逐维概率”而非标量注意力，从而允许同一句在不同特征维上的重要性对不同任务独立调节。
+
+1) 参数化结构（逐句同构 MLP）
+- 采用两层前馈网络并配合归一化与正则化：
+  \[
+  p^{(t)}_i = \sigma\!\left( W^{(t)}_2\, \mathrm{Drop}\big(\mathrm{LN}(\mathrm{LReLU}(W^{(t)}_1 e_i + b^{(t)}_1))\big) + b^{(t)}_2 \right),
+  \]
+  其中 `Linear → LayerNorm → LeakyReLU → Dropout → Linear → Sigmoid` 与实现一致（见 `text_assessor._build_filter`）。输出维度与输入相同（\(h\)），保证与句向量元素级对齐。
+
+2) 逐维归一加权的文档表示（任务特定）
+- 在句维进行“元素级加权均值”得到文档表示 \(v^{(t)}\in\mathbb{R}^h\)：
+  \[
+  v^{(t)} = \frac{\sum_{i=1}^{n} p^{(t)}_i \odot e_i}{\sum_{i=1}^{n} p^{(t)}_i + \varepsilon}
+  \;\;\Leftrightarrow\;\;
+  v^{(t)}_d = \frac{\sum_{i=1}^{n} p^{(t)}_{i,d}\, e_{i,d}}{\sum_{i=1}^{n} p^{(t)}_{i,d} + \varepsilon},\; d=1,\dots,h,
+  \]
+  其中 \(\odot\) 为逐元素乘法，分母逐维求和，\(\varepsilon\) 为数值稳定项（实现取 \(10^{-8}\)）。矩阵式写法为 \(v^{(t)}=\frac{(E\odot P^{(t)})^{\top}\mathbf{1}}{(P^{(t)})^{\top}\mathbf{1}+\varepsilon}\)。
+
+3) 性质与讨论（学术视角）
+- 非竞争性与可稀疏化：Sigmoid 输出不在句维或特征维强制和为 1，避免 softmax 带来的“赢家通吃”与证据过抑制问题；LayerNorm 与 Dropout 提升稳定性与泛化。
+- 细粒度可解释性：\(P^{(t)}\) 构成“句 × 维”热力图；可定义句级显著性 \(s^{(t)}_i=\tfrac{1}{h}\sum_d p^{(t)}_{i,d}\) 与维度显著性 \(r^{(t)}_d=\tfrac{1}{n}\sum_i p^{(t)}_{i,d}\)。
+- 复杂度：相对 token 级注意力，门控仅在句向量上计算，时间复杂度 \(\mathcal{O}(n\,h\,r)\)（\(r\) 为隐藏扩展倍率），适配长摘要场景。
+
+4) 实现对齐与多头独立性
+- 每个任务头拥有独立的门控参数（`self.outputs[k]['filter']`），分别产生 \(v^{(t)}\) 并送入对应的 `Assessor`；
+- 代码路径：`model/text_assessment/text_assessor.py` 中 `_build_filter` 与 `_forward` 的“维度化加权”部分完全对应上述公式。
 
 ### 2.4 评估器（Assessor MLP）
-- 结构：`Linear → ReLU → Dropout → Linear`，将 `v` 投射到任务特定的分类维度；当前配置为两路 MLP 分别输出 `[3]` 与 `[2]`，拼接后得到 `[5]` 维 logits。
-- 输出映射顺序固定：`[THREAT_up, THREAT_down, citizen_impact, PF_score, PF_US]`。若修改任务维度，需同步更新 `TextAssessor(n2=...)`、`compute_loss(...)`、`caculate_accuracy(...)` 与各训练脚本中的 `LABELS` 顺序与键名。
+本节形式化刻画任务评估器的结构与映射。对 2.3 节得到的任务特定文档表示 \(v^{(t)}\in\mathbb{R}^{h}\)，为每个任务头 \(t\) 定义一组独立的判别映射（两层前馈）：
+\[
+ a_{\psi^{(t)}}: \mathbb{R}^{h} \to \mathbb{R}^{k_t},\qquad
+ a_{\psi^{(t)}}(v) = W^{(t)}_4\, \mathrm{Drop}\big(\mathrm{ReLU}(W^{(t)}_3 v + b^{(t)}_3)\big) + b^{(t)}_4,
+\]
+其中实现结构为 `Linear → ReLU → Dropout → Linear`（见 `text_assessor._build_assessor`），\(k_1=3, k_2=2\)。两路输出在类别维拼接得到最终 logits：
+\[
+ z = \big[\, a_{\psi^{(1)}}(v^{(1)})\,\big\Vert\, a_{\psi^{(2)}}(v^{(2)})\,\big] \in \mathbb{R}^{5}.
+\]
+
+1) 属性与设计动机（学术视角）
+- 任务解耦与负迁移抑制：为每路任务头配置独立参数 \(\psi^{(t)}\)，可在共享编码器之上减少目标间冲突；必要时可扩展为共享-特定混合结构。
+- 表达能力与稳定性：`ReLU + Dropout` 提供非线性判别能力与正则化；浅层 MLP 在样本规模与类别不平衡下更稳健。
+- 概率接口：评估器输出为 logits \(z\)，经 Sigmoid 映射为边缘概率并由 BCE-with-logits 监督（见 1.4 节）。
+
+2) 类别顺序与一致性约束
+- 固定拼接顺序为
+  \[
+  [\texttt{THREAT\_up},\, \texttt{THREAT\_down},\, \texttt{citizen\_impact},\, \texttt{PF\_score},\, \texttt{PF\_US}],
+  \]
+  即第一路头输出前三维、第二路头输出后两维。该顺序必须与训练脚本中的 `LABELS`、损失与度量函数访问索引完全一致；修改任务维度时需同步更新 `TextAssessor(n2=...)`、`compute_loss(...)`、`caculate_accuracy(...)` 与各 `training-3-2-*.py` 的 `LABELS`。
+
+3) 实现对齐
+- 代码路径：`model/text_assessment/text_assessor.py` 的 `_build_assessor` 定义 MLP，前向中按上述顺序拼接；
+- 输出形状：两路大小分别为 `[3]` 与 `[2]`，拼接为 `[5]`；下游阈值化与指标计算参见 1.4 节与训练脚本实现。
 
 ### 2.5 前向与 Batch 约定（本项目特有）
-- Dataloader 的 `collate_fn` 原样返回“样本字典的列表”（不将张量在 batch 维拼接）。
-- `TextAssessor.forward` 会遍历该列表，逐样本调用 `_forward`，再在 batch 维堆叠为 `[batch, 5]`。这与常见的 `[batch, seq_len]` 直接送入 encoder 的范式不同，是本项目保持句级结构和解释性的关键约定。
+本项目采用“样本级列表 + 样本内句维并行”的非典型批处理约定，以保留句级结构并避免跨样本的对齐/填充代价。为消除歧义，现形式化给出接口契约与前向语义。
+
+1) 数据接口（契约）
+- 单样本 s 的字典键与张量形状：
+  - `input_ids` ∈ ℕ^{n×L}，`attention_mask` ∈ {0,1}^{n×L}（n 为句数，L 为统一句长）；
+  - 五个标注标量，组成标签向量 \(y\in\{0,1\}^m\)（本项目 \(m=5\)，顺序与 2.4 节一致）。
+- 批次 B 的返回值：`collate_fn` 原样返回 Python 列表 \(\mathcal{B}=[s_1,\dots,s_{|\mathcal{B}|}]\)，不在 batch 维拼接张量；因此允许每个样本拥有不同句数 \(n_i\)。
+
+2) 模型前向（语义）
+- 记单样本映射 \(f: s\mapsto z\in\mathbb{R}^{m}\) 为 `TextAssessor._forward`：对样本内部的句子批 \([n\times L]\) 送入 BERT，按 2.2 节池化、2.3 节门控、2.4 节评估，产出 m 维 logits；
+- 记批次映射 `forward(𝔅)` 为：
+  \[
+  \mathrm{forward}(\mathcal{B})\;=\;\mathrm{Stack}\big(\, f(s_1),\dots,f(s_{|\mathcal{B}|})\,\big)\;\in\;\mathbb{R}^{|\mathcal{B}|\times m}.
+  \]
+  实现上 `TextAssessor.forward` 遍历列表逐样本调用 `_forward` 并堆叠结果。训练循环将该输出与原始 \(\mathcal{B}\) 同步使用以计算损失（见 `compute_loss`）。
+
+3) 复杂度、并行性与资源特性
+- 设第 i 个样本句数为 \(n_i\)。计算量与显存占用主要由样本内句批决定，总复杂度近似 \(\sum_i \mathcal{O}(n_i\,L\,h)\)；
+- 样本间顺序遍历牺牲了“跨样本句子合并”的吞吐潜力，但换取了：
+  (i) 不同样本的 \(n_i\) 无需对齐；
+  (ii) 句级结构保持完整，便于门控与可解释性；
+  (iii) 峰值显存受单样本最大 \(n_i\) 限制，而非同批次句数总和，提高在长摘要/句数方差较大时的稳定性。
+
+4) 正确性与边界情形
+- 空句或全 padding：均值与门控归一项加入 \(\varepsilon\) 以避免除零；数据集预处理确保至少产出一条句子分段；
+- 设备与 dtype：样本内张量一律迁移至同一 device 与 dtype；
+- 顺序一致性：批中样本与输出行严格对齐，后续阈值化与指标计算按固定标签顺序进行（见 1.4、2.4 节）。
+
+5) 实现对齐
+- `model/text_assessment/text_dataset.py`：`collate_fn` 返回原始列表，不做张量级拼接；
+- `model/text_assessment/text_assessor.py`：`forward` 逐样本调用 `_forward` 并 `torch.stack`；`_forward` 在样本内以句维作为“微批”送入 BERT，随后执行池化→门控→评估。
 
 ## 3 关键实现与实验流程
 
 ### 3.1 数据管道（`model/text_assessment/text_dataset.py`）
-- `to_literal()`：`summary` 去 `*` 后用正则 `[\.;]\\s` 分句；
-- 编码：按句使用本地 tokenizer，padding/truncation 到 `MAX_LEN`；
-- 返回：字典含 `input_ids`、`attention_mask`（形如 `[n_sentences, MAX_LEN]`）及 5 个 float 标签；
-- `collate_fn`：原样返回 Python 列表，供模型逐样本处理。
+为保证句级结构在进入模型前得到规范化且与实现严格一致，数据管道采用“逐样本清洗与分句 → 按句子批量子词化 → 无跨样本拼接”的范式。下述记号沿用第 2 章：单样本文本被切分为 \(n\) 个句子，统一句长 \(L=\texttt{MAX\_LEN}\)，隐藏维不在本节出现。
+
+1) 样本构造与清洗
+- 行筛选：对输入的 `DataFrame` 进行 `dropna(subset=df.columns)`，剔除任一字段存在缺失值的样本；随后 `reset_index` 保持行索引连续；
+- 轻量清洗：对 `summary` 字段去除字符 `*`，以避免对 tokenizer 的干扰；
+- 可复现性：在模块加载时设置 `torch.manual_seed/torch.cuda.manual_seed/_all(SEED)`，确保随机操作（若有）的一致性（当前数据管道自身为确定性）。
+
+2) 句子切分（启发式正则）
+- `to_literal()` 使用正则表达式 `[\.\;]\\s` 在句号或分号后的空白处分割：
+  \[
+  s\;\mapsto\; (\tilde{s}_1,\dots,\tilde{s}_n) = \mathrm{re\_split}([\\.\\;]\\s,\; s\setminus\{\*\}).
+  \]
+- 该启发式在通用英文摘要上表现稳健，但对包含缩写（如 “e.g.”）可能产生过度切分；如需进一步鲁棒性，可替换为 Punkt/SpaCy 断句器（留作工程改进，不影响本文方法论）。
+
+3) 子词化与张量化（句为批维）
+- 对句子列表调用本地 `BertTokenizer`：
+  `tokenizer(text=cur.summary, return_tensors='pt', padding='max_length', truncation=True, max_length=L)`；
+- 产出张量形状：
+  `input_ids ∈ ℕ^{n×L}`，`attention_mask ∈ {0,1}^{n×L}`；
+- 设备放置：直接在数据集层将张量迁移至 `device`（CPU/GPU），减少训练循环中的搬运开销；
+- 注意：当句子极短或为空串时，tokenizer 仍给出合法的特殊标记序列，`attention_mask` 保证 mask 均值池化（见 2.2 节）的数值稳定。
+
+4) 标签编码与顺序一致性
+- 输出五个标签字段：`THREAT_up`、`THREAT_down`、`citizen_impact`、`PF_score`、`PF_US`，按浮点数 `torch.float` 存储并与模型输出顺序严格一致（见 2.4 节）；
+- 记标签向量 \(y\in\{0,1\}^{m}\) 且 \(m=5\)。类别顺序的一致性对损失计算与阈值选择至关重要。
+
+5) 返回契约与批处理策略
+- `__getitem__(idx)` 返回单样本字典：`{'input_ids': ℕ^{n×L}, 'attention_mask': {0,1}^{n×L}, five float labels}`；
+- `collate_fn(batch)` 原样返回 Python 列表 \(\mathcal{B}=[s_1,\dots,s_{|\mathcal{B}|}]\)，不在 batch 维进行任何拼接或对齐，从而允许不同样本具有不同句数 \(n_i\)；
+- 训练侧的 `TextAssessor.forward` 逐样本调用 `_forward` 并在 batch 维堆叠 logits，契约见 2.5 节。
+
+6) 复杂度与工程考量
+- 计算与显存主要取决于样本内句批大小 \(n\)。该设计避免了跨样本句子合并导致的超大有效序列长度，提升在长摘要与句数方差较大场景下的稳定性；
+- 正则化与数值稳定依赖于后续模块：池化与门控引入 \(\varepsilon\) 的归一化，标签不平衡在损失层处理（见 1.4 节）。
+
+7) 与实现的一致性
+- 代码对应：`TextDataset` 与 `collate_fn` 位于 `model/text_assessment/text_dataset.py`；
+- 关键调用：`to_literal()` 完成分句；`__getitem__` 完成 tokenizer 编码与设备放置；`collate_fn` 维持“列表批”的外部契约。
 
 ### 3.2 模型与训练循环（`model/text_assessment/text_assessor.py`）
 - `TextAssessor`：包含多个输出头 `outputs`，每头含 `filter` 与 `assessor`；
