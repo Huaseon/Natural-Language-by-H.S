@@ -1,4 +1,4 @@
-# 基于 Transformer 双向编码器的文本要点抽取方法（项目当前版本说明）
+# 基于 Transformer 双向编码器的文本要点抽取方法
 
 摘要
 - 本文提出一种面向结构化打分任务的文本要点抽取方法。方法以本地 BERT（Transformer 双向编码器）为语义编码 backbone，对输入摘要先进行句级切分与编码，再通过可学习的门控过滤（filter）在句级-特征级联合维度上完成重要性重加权，最后由多任务评估器（assessor heads）输出 5 个二分类目标：THREAT_up、THREAT_down、citizen_impact、PF_score、PF_US。该方法兼顾句级解释性与端到端可训练性，并通过阶段性解冻策略稳定优化预训练模型参数。当前实现与实验均基于 `training-3-2-*.py` 脚本。
