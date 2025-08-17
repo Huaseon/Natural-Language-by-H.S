@@ -46,7 +46,7 @@ SEED = 20040508
 FILENAME = 'analysis_result_simple_format_80000_with_summary.xlsx'
 LABELS = ['THREAT_up', 'THREAT_down', 'citizen_impact', 'PF_score', 'PF_US']
 BATCH_SIZE = 6
-PATIENCE = 30 # 早停
+PATIENCE = 56 # 早停
 OUTPUT_DIR = './output/experiment-v2'
 WEIGHT_DECAY_PHASE = 1e-3
 WEIGHT_DECAY_FINAL = 1e-4
@@ -54,7 +54,7 @@ WEIGHT_DECAY_FINAL = 1e-4
 # %% 渐进微调配置 迭代次数和学习率
 PHASES = [
     {  # Final: 所有层
-        'name': 'final', 'epochs': 210,
+        'name': 'final', 'epochs': 140,
         'lrs': {
             'outputs': 1e-6,
             'pooler': 1e-6,
@@ -77,10 +77,10 @@ def set_seed(seed: int):
     torch.cuda.manual_seed_all(seed)
     torch.Generator().manual_seed(seed)
 
-# %% 划分数据集 80000 -> 8000/5000+/66000+
+# %% 划分数据集 80000 -> 12000/8000/60000
 def split_train_val_test(df: pd.DataFrame, tokenizer: BertTokenizer) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     dataset = TextDataset(df=df, tokenizer=tokenizer, max_len=MAX_LEN, device=get_device())
-    return random_split(dataset, [3/30, 2/30, 25/30])
+    return random_split(dataset, [3/20, 2/20, 15/20])
 
 
 # %%
