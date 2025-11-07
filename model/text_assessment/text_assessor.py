@@ -61,7 +61,7 @@ class TextAssessor(nn.Module):
             assessments = assessor(avg) # [_n2]
             logits.append(assessments)
 
-        return torch.hstack(logits) # [n, n2]
+        return torch.hstack(logits) # [n2]
 
     def _build_filter(self, in_features: int, hidden_size_rate: int=4):
         return nn.Sequential(
